@@ -67,7 +67,6 @@ def get_word_info(word):
             for k in range(num_senses):
                 ij = definitions["lexicalEntries"][i]["entries"][j]
                 ijk = ij["senses"][k]
-                #print(i, j, k, ijk.keys())
                 if "definitions" in ijk.keys():
                     definition = ijk["definitions"][0]
                     senseId = ijk["id"]
