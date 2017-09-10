@@ -54,14 +54,3 @@ class EmbeddingSoftAttention(nn.Module):
                 )
             )
         return torch.cat(masks, 0).view(batch_size, self.ncond) * x_embs
-
-
-esa = EmbeddingSoftAttention(100, 300, 256, False)
-x = Variable(torch.randn(2, 300))
-context = [
-    Variable(torch.randn(3, 300)),
-    Variable(torch.randn(5, 300))
-]
-
-output = esa(x, context)
-print(output.size())
