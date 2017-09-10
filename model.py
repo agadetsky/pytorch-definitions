@@ -4,12 +4,17 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
+from EmbeddingSoftAttention import EmbeddingSoftAttention
 
 
 class Model(nn.Module):
 
-    def __init__(self, ntokens=100000, nx=300, nhid=600,
-                 ncond=300, nlayers=3, dropout=0.5):
+    def __init__(
+        self, ntokens=100000, nx=300, nhid=600,
+        ncond=300, nlayers=3, dropout=0.5,
+        use_attention=True, n_att_tokens=1000000,
+        n_att_hid=256, learn_attention_embeddings=False,
+    ):
         super(Model, self).__init__()
 
         self.keep_prob = dropout
@@ -19,6 +24,10 @@ class Model(nn.Module):
         self.nhid = nhid
         self.n_rnn_input = nx + ncond
         self.nlayers = nlayers
+        self.use_attention = use_attention
+        self.learn_attention_embeddings = learn_attention_embeddings
+        self.n_att_tokens = n_att_tokens
+        self.n_att_hid = n_att_hid
 
         self.dropout = nn.Dropout(p=self.keep_prob)
 
@@ -35,6 +44,14 @@ class Model(nn.Module):
         self.linear = nn.Linear(in_features=self.nhid,
                                 out_features=self.ntokens)
 
+        if self.use_attention:
+            self.att = EmbeddingSoftAttention(
+                ntokens=self.n_att_tokens,
+                ncond=self.ncond,
+                nhid=self.n_att_hid,
+                learn_embs=self.learn_attention_embeddings
+            )
+
         self.init_weights()
 
     def init_weights(self):
@@ -43,13 +60,17 @@ class Model(nn.Module):
         self.linear.bias.data.fill_(0)
         self.linear.weight.data.uniform_(-initrange, initrange)
 
-    def init_hidden(self, batch_size=96):
-        return [
-            Variable(torch.zeros(batch_size, self.nlayers, self.nhid)).cuda(),
-            Variable(torch.zeros(batch_size, self.nlayers, self.nhid)).cuda(),
+    def init_hidden(self, batch_size=96, cuda=True):
+        hiddens = [
+            Variable(torch.zeros(batch_size, self.nlayers, self.nhid)),
+            Variable(torch.zeros(batch_size, self.nlayers, self.nhid)),
         ]
+        if cuda:
+            for i in range(2):
+                hiddens[i] = hiddens[i].cuda()
+        return hiddens
 
-    def forward(self, x, lengths, maxlen, conds, hidden):
+    def forward(self, x, lengths, maxlen, conds, contexts, hidden):
 
         for i in range(len(hidden)):
             hidden[i] = hidden[i].permute(1, 0, 2).contiguous()
@@ -61,6 +82,8 @@ class Model(nn.Module):
         lengths = lengths.cpu().data.numpy()
 
         embs = self.embs(x)
+        if self.use_attention:
+            conds = self.att(conds, contexts)
         repeated_conds = conds.view(-1).repeat(maxlen)
         repeated_conds = repeated_conds.view(maxlen, *conds.size())
         repeated_conds = repeated_conds.permute(1, 0, 2)
