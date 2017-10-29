@@ -1,0 +1,32 @@
+Parameters:
+
+TRAIN_DATA = ./data/main_data/definitions_train.json
+VAL_DATA = ./data/main_data/definitions_val.json
+TEST_DATA = ./data/main_data/definitions_test.json
+INIT_MODEL_CKPT = ./pretrain_wiki_exp/best_pretrain
+MODEL_VOCAB = ./pretrain_wiki_exp/wiki_vocab.json
+COND_TYPE = 0
+COND_WEIGHTS = None
+FIX_EMBEDDINGS = False
+SEED = 42
+CUDA = True
+BATCH_SIZE = 16
+NCOND = 300
+NX = 300
+NHID = 300
+NUM_EPOCHS = 35
+NLAYERS = 3
+DROPOUT_PROB = 0.5
+INITIAL_LR = 0.001
+DECAY_FACTOR = 0.1
+DECAY PATIENCE = 0
+GRAD_CLIP = 5
+MODEL_CKPT = ./train_def_zeros_exp/best_train_type_0
+TRAIN = True
+
+
+RESULTS:
+
+TRAIN PPL: 18.417932865128563
+VAL PPL: 43.20775199338854 
+TEST PPL: 43.74937228389588
