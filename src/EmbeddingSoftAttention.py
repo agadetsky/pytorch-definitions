@@ -12,14 +12,12 @@ class EmbeddingSoftAttention(nn.Module):
         self.ntokens = ntokens
         self.ncond = ncond
         self.nhid = nhid
-        self.learn_embs = learn_embs
 
-        if self.learn_embs:
-            self.embs = nn.Embedding(
-                num_embeddings=ntokens,
-                embedding_dim=ncond,
-                padding_idx=constants.PAD
-            )
+        self.embs = nn.Embedding(
+            num_embeddings=ntokens,
+            embedding_dim=ncond,
+            padding_idx=constants.PAD
+        )
 
         self.ann = nn.Sequential(
             nn.Linear(
@@ -36,16 +34,10 @@ class EmbeddingSoftAttention(nn.Module):
 
     def forward(self, x, context):
         batch_size = x.size(0)
-        if self.learn_embs:
-            x_embs = self.embs(x)
-        else:
-            x_embs = x
+        x_embs = self.embs(x)
         masks = []
         for i in range(batch_size):
-            if self.learn_embs:
-                context_embs_i = self.embs(context[i])
-            else:
-                context_embs_i = context[i]
+            context_embs_i = self.embs(context[i])
             masks.append(
                 F.sigmoid(
                     self.a_linear(

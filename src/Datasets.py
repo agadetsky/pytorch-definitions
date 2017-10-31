@@ -101,8 +101,8 @@ def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size):
 
         batch_x_i = np.array(batch_x_i)[order]
         batch_y_i = np.array(batch_y_i)[order]
-        batch_cond_i = np.array(batch_cond_i)[order]
-        batch_context_i = np.array(batch_context_i)[order]
+        batch_cond_i = np.array(batch_cond_i)[order].squeeze()
+        batch_context_i = np.array(batch_context_i)[order].tolist()
         yield batch_x_i, batch_y_i, batch_cond_i, batch_context_i
 
 
@@ -127,22 +127,28 @@ class Dictionary(object):
             self.w2i[word] = len(self.i2w)
             self.i2w.append(word)
 
+    def encode(self, word):
+        if word in self.w2i:
+            return self.w2i[word]
+        else:
+            return 1
+
+    def decode(self, idx):
+        if idx < len(self.i2w):
+            return self.i2w[idx]
+        else:
+            raise "Some shit here!"
+
     def encode_seq(self, seq):
         out = []
         for word in seq:
-            if word in self.w2i:
-                out.append(self.w2i[word])
-            else:
-                out.append(1)  # constants.UNK
+            out.append(self.encode(word))
         return out
 
     def decode_seq(self, seq):
         out = []
         for idx in seq:
-            if idx in self.i2w:
-                out.append(self.i2w[idx])
-            else:
-                raise "Some shit here!"
+            out.append(self.decode(idx))
         return out
 
     def save(self, path):
@@ -160,16 +166,36 @@ class Dictionary(object):
 
 class WikiText(object):
 
-    def __init__(self, train, val, test):
+    def __init__(self, train, val, test,
+                 defs_train=None, defs_val=None, defs_test=None):
         self.vocab = Dictionary()
         self.train = self.tokenize(open(train, "r").read().lower().split())
         self.val = self.tokenize(open(val, "r").read().lower().split())
         self.test = self.tokenize(open(test, "r").read().lower().split())
+        
+        if defs_train is not None:
+            with open(defs_train, "r") as infile:
+                tmp = json.load(infile)
+            self.tokenize_defs(tmp)
+        if defs_val is not None:
+            with open(defs_val, "r") as infile:
+                tmp = json.load(infile)
+            self.tokenize_defs(tmp)
+        if defs_test is not None:
+            with open(defs_test, "r") as infile:
+                tmp = json.load(infile)
+            self.tokenize_defs(tmp)
 
     def tokenize(self, data):
         for i in range(len(data)):
             self.vocab.add_word(data[i])
         return data
+
+    def tokenize_defs(self, data):
+        for i in range(len(data)):
+            self.vocab.add_word(data[i][0][0])
+            for j in range(len(data[i][1])):
+                self.vocab.add_word(data[i][1][j])
 
 
 class Definitions(object):
@@ -202,6 +228,7 @@ class Definitions(object):
 
     def tokenize_defs(self, data):
         for i in range(len(data)):
+            self.vocab.add_word(data[i][0][0])
             for j in range(len(data[i][1])):
                 self.vocab.add_word(data[i][1][j])
 

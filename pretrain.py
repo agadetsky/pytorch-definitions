@@ -17,6 +17,9 @@ from tqdm import tqdm
 TRAIN_DATA = "./data/wikitext-103/wiki.train.tokens"
 VAL_DATA = "./data/wikitext-103/wiki.valid.tokens"
 TEST_DATA = "./data/wikitext-103/wiki.test.tokens"
+DEFS_TRAIN_DATA = "./data/main_data/definitions_train.json"
+DEFS_VAL_DATA = "./data/main_data/definitions_val.json"
+DEFS_TEST_DATA = "./data/main_data/definitions_test.json"
 INIT_WV = True
 WV_WEIGHTS = "./data/w2v_embeddings/GoogleNews-vectors-negative300.bin"
 SEED = 42
@@ -53,7 +56,10 @@ LOGFILE.flush()
 wiki = WikiText(
     TRAIN_DATA,
     VAL_DATA,
-    TEST_DATA
+    TEST_DATA,
+    DEFS_TRAIN_DATA,
+    DEFS_VAL_DATA,
+    DEFS_TEST_DATA
 )
 
 wiki.vocab.save(SAVE_VOCAB_TO)
@@ -296,6 +302,9 @@ tqdm.write("Parameters:\n", file=EXP_RESULTS)
 tqdm.write("TRAIN_DATA = {0}".format(TRAIN_DATA), file=EXP_RESULTS)
 tqdm.write("VAL_DATA = {0}".format(VAL_DATA), file=EXP_RESULTS)
 tqdm.write("TEST_DATA = {0}".format(TEST_DATA), file=EXP_RESULTS)
+tqdm.write("DEFS_TRAIN_DATA = {0}".format(DEFS_TRAIN_DATA), file=EXP_RESULTS)
+tqdm.write("DEFS_VAL_DATA = {0}".format(DEFS_VAL_DATA), file=EXP_RESULTS)
+tqdm.write("DEFS_TEST_DATA = {0}".format(DEFS_TEST_DATA), file=EXP_RESULTS)
 tqdm.write("INIT_WV = {0}".format(INIT_WV), file=EXP_RESULTS)
 tqdm.write("WV_WEIGHTS = {0}".format(WV_WEIGHTS), file=EXP_RESULTS)
 tqdm.write("SEED = {0}".format(SEED), file=EXP_RESULTS)

@@ -1,13 +1,13 @@
 import src.constants as constants
-from src.Datasets import Definitions, batchify_defs
-from src.data_workflow import Word2Vec, AdaGram, Zeros
-from src.model import BaseModel
+from src.Datasets import Definitions, batchify_defs_with_examples
+from src.model import Attn_Model
 import torch
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.nn import CrossEntropyLoss
 from torch.nn.functional import cross_entropy
 from torch.nn.utils import clip_grad_norm
+from torch import from_numpy
 import numpy as np
 from tqdm import tqdm
 
@@ -18,8 +18,6 @@ VAL_DATA = "./data/main_data/definitions_val.json"
 TEST_DATA = "./data/main_data/definitions_test.json"
 INIT_MODEL_CKPT = "./pretrain_wiki_exp/best_pretrain"  # or None
 MODEL_VOCAB = "./pretrain_wiki_exp/wiki_vocab.json"  # or None
-COND_TYPE = 0  # 0 for Zeros, 1 for Word2Vec, 2 for AdaGram
-COND_WEIGHTS = None # None for Zeros or Path for Word2Vec and AdaGram
 FIX_EMBEDDINGS = False
 SEED = 42
 CUDA = True
@@ -29,16 +27,17 @@ NX = 300
 NHID = NX + NCOND
 NUM_EPOCHS = 35
 NLAYERS = 3
+N_ATTN_HID = 256
 DROPOUT_PROB = 0.5
 INITIAL_LR = 0.001
 DECAY_FACTOR = 0.1
 DECAY_PATIENCE = 0
 GRAD_CLIP = 5
-MODEL_CKPT = "./train_def_zeros_exp/best_train_type_{0}".format(COND_TYPE)
+MODEL_CKPT = "./train_def_attn_exp/best_train_attn"
 TRAIN = True
 
-LOGFILE = open('./train_def_zeros_exp/log.txt', 'a')
-EXP_RESULTS = open("./train_def_zeros_exp/results.txt", "a")
+LOGFILE = open('./train_def_attn_exp/log.txt', 'a')
+EXP_RESULTS = open("./train_def_attn_exp/results.txt", "a")
 
 # code start
 
@@ -47,7 +46,6 @@ torch.manual_seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(SEED)
 
-
 tqdm.write("Reading Data!", file=LOGFILE)
 LOGFILE.flush()
 
@@ -55,40 +53,35 @@ defs = Definitions(
     train=TRAIN_DATA,
     val=VAL_DATA,
     test=TEST_DATA,
-    with_examples=False,
+    with_examples=True,
     vocab_path=MODEL_VOCAB
 )
-
-tqdm.write("Reading vectors for conditioning!", file=LOGFILE)
-LOGFILE.flush()
-
-if COND_TYPE == 0:
-    cond = Zeros(NCOND)
-elif COND_TYPE == 1:
-    cond = Word2Vec(COND_WEIGHTS)
-elif COND_TYPE == 2:
-    import julia
-    j = julia.Julia()
-    cond = AdaGram(COND_WEIGHTS)
-else:
-    raise ValueError("No such COND_TYPE = {0}".format(COND_TYPE))
 
 if TRAIN:
     tqdm.write("Initialising Model!", file=LOGFILE)
     LOGFILE.flush()
 
-    net = BaseModel(
+    net = Attn_Model(
         ntokens=len(defs.vocab.i2w),
         nx=NX,
         nhid=NHID,
         ncond=NCOND,
         nlayers=NLAYERS,
         dropout=DROPOUT_PROB,
+        n_attn_tokens=len(defs.cond_vocab.i2w),
+        n_attn_hid=N_ATTN_HID
     )
 
     net.cuda()  # if cuda
+
     if INIT_MODEL_CKPT is not None:
         params = torch.load(INIT_MODEL_CKPT)
+        missing = list(
+            set(net.state_dict().keys()) - set(params["state_dict"])
+        )
+        for key in missing:
+            params["state_dict"][key] = net.state_dict()[key]
+
         net.load_state_dict(params["state_dict"])
 
     net.embs.weight.requires_grad = not FIX_EMBEDDINGS
@@ -127,10 +120,10 @@ if TRAIN:
             )
         )
         with tqdm(total=num_batches, file=LOGFILE) as pbar:
-            train_iter = batchify_defs(
-                defs.train, defs.vocab, cond, BATCH_SIZE
+            train_iter = batchify_defs_with_examples(
+                defs.train, defs.vocab, defs.cond_vocab, BATCH_SIZE
             )
-            for batch_x, batch_y, conds in train_iter:
+            for batch_x, batch_y, conds, contexts in train_iter:
                 hidden = net.init_hidden(
                     batch_x.shape[0], cuda=True
                 )  # if cuda
@@ -143,10 +136,19 @@ if TRAIN:
                 conds = Variable(
                     torch.from_numpy(conds)
                 )
-                conds = conds.cuda().float()
+                conds = conds.cuda().long()
                 batch_y = Variable(torch.from_numpy(batch_y)).cuda().view(-1)
 
-                output, hidden = net(batch_x, lengths, maxlen, conds, hidden)
+                for i in range(len(contexts)):
+                    contexts[i] = Variable(
+                        from_numpy(
+                            np.array(contexts[i])
+                        )
+                    ).cuda().long()
+
+                output, hidden = net(
+                    batch_x, lengths, maxlen, conds, contexts, hidden
+                )
                 loss = criterion(output.view(-1, len(defs.vocab.i2w)), batch_y)
                 loss.backward()
                 clip_grad_norm(
@@ -185,10 +187,10 @@ if TRAIN:
             )
         )
         with tqdm(total=num_batches, file=LOGFILE) as pbar:
-            val_iter = batchify_defs(
-                defs.val, defs.vocab, cond, BATCH_SIZE
+            val_iter = batchify_defs_with_examples(
+                defs.val, defs.vocab, defs.cond_vocab, BATCH_SIZE
             )
-            for batch_x, batch_y, conds in val_iter:
+            for batch_x, batch_y, conds, contexts in val_iter:
                 hidden = net.init_hidden(
                     batch_x.shape[0], cuda=True
                 )  # if cuda
@@ -200,10 +202,18 @@ if TRAIN:
                 conds = Variable(
                     torch.from_numpy(conds)
                 )
-                conds = conds.cuda().float()
+                conds = conds.cuda().long()
                 batch_y = Variable(torch.from_numpy(batch_y)).cuda().view(-1)
+                for i in range(len(contexts)):
+                    contexts[i] = Variable(
+                        from_numpy(
+                            np.array(contexts[i])
+                        )
+                    ).cuda().long()
 
-                output, hidden = net(batch_x, lengths, maxlen, conds, hidden)
+                output, hidden = net(
+                    batch_x, lengths, maxlen, conds, contexts, hidden
+                )
                 loss = criterion(output.view(-1, len(defs.vocab.i2w)), batch_y)
 
                 lengths_cnt += lengths.sum().cpu().data.numpy()[0]
@@ -236,13 +246,15 @@ if not TRAIN:
     tqdm.write("Loading Model weights for testing!", file=LOGFILE)
     LOGFILE.flush()
 
-    net = BaseModel(
+    net = Attn_Model(
         ntokens=len(defs.vocab.i2w),
         nx=NX,
         nhid=NHID,
         ncond=NCOND,
         nlayers=NLAYERS,
         dropout=DROPOUT_PROB,
+        n_attn_tokens=len(defs.cond_vocab.i2w),
+        n_attn_hid=N_ATTN_HID
     )
 
     net.cuda()  # if cuda
@@ -254,7 +266,9 @@ LOGFILE.flush()
 
 net.eval()
 
-test_iter = batchify_defs(defs.test, defs.vocab, cond, BATCH_SIZE)
+test_iter = batchify_defs_with_examples(
+    defs.test, defs.vocab, defs.cond_vocab, BATCH_SIZE
+)
 lengths_cnt = 0
 num_batches = int(
     np.ceil(
@@ -263,7 +277,7 @@ num_batches = int(
 )
 loss_i = []
 with tqdm(total=num_batches, file=LOGFILE) as pbar:
-    for batch_x, batch_y, conds in test_iter:
+    for batch_x, batch_y, conds, contexts in test_iter:
         hidden = net.init_hidden(
             batch_x.shape[0], cuda=True
         )  # if cuda
@@ -275,10 +289,18 @@ with tqdm(total=num_batches, file=LOGFILE) as pbar:
         conds = Variable(
             torch.from_numpy(conds)
         )
-        conds = conds.cuda().float()
+        conds = conds.cuda().long()
         batch_y = Variable(torch.from_numpy(batch_y)).cuda().view(-1)
+        for i in range(len(contexts)):
+            contexts[i] = Variable(
+                from_numpy(
+                    np.array(contexts[i])
+                )
+            ).cuda().long()
 
-        output, hidden = net(batch_x, lengths, maxlen, conds, hidden)
+        output, hidden = net(
+            batch_x, lengths, maxlen, conds, contexts, hidden
+        )
         loss = cross_entropy(
             output.view(-1, len(defs.vocab.i2w)),
             batch_y,
@@ -296,15 +318,12 @@ tqdm.write("Test PPL: {0}".format(test_loss), file=LOGFILE)
 LOGFILE.flush()
 LOGFILE.close()
 
-
 tqdm.write("Parameters:\n", file=EXP_RESULTS)
 tqdm.write("TRAIN_DATA = {0}".format(TRAIN_DATA), file=EXP_RESULTS)
 tqdm.write("VAL_DATA = {0}".format(VAL_DATA), file=EXP_RESULTS)
 tqdm.write("TEST_DATA = {0}".format(TEST_DATA), file=EXP_RESULTS)
 tqdm.write("INIT_MODEL_CKPT = {0}".format(INIT_MODEL_CKPT), file=EXP_RESULTS)
 tqdm.write("MODEL_VOCAB = {0}".format(MODEL_VOCAB), file=EXP_RESULTS)
-tqdm.write("COND_TYPE = {0}".format(COND_TYPE), file=EXP_RESULTS)
-tqdm.write("COND_WEIGHTS = {0}".format(COND_WEIGHTS), file=EXP_RESULTS)
 tqdm.write("FIX_EMBEDDINGS = {0}".format(FIX_EMBEDDINGS), file=EXP_RESULTS)
 tqdm.write("SEED = {0}".format(SEED), file=EXP_RESULTS)
 tqdm.write("CUDA = {0}".format(CUDA), file=EXP_RESULTS)
@@ -314,6 +333,7 @@ tqdm.write("NX = {0}".format(NX), file=EXP_RESULTS)
 tqdm.write("NHID = {0}".format(NCOND), file=EXP_RESULTS)
 tqdm.write("NUM_EPOCHS = {0}".format(NUM_EPOCHS), file=EXP_RESULTS)
 tqdm.write("NLAYERS = {0}".format(NLAYERS), file=EXP_RESULTS)
+tqdm.write("N_ATTN_HID = {0}".format(N_ATTN_HID), file=EXP_RESULTS)
 tqdm.write("DROPOUT_PROB = {0}".format(DROPOUT_PROB), file=EXP_RESULTS)
 tqdm.write("INITIAL_LR = {0}".format(INITIAL_LR), file=EXP_RESULTS)
 tqdm.write("DECAY_FACTOR = {0}".format(DECAY_FACTOR), file=EXP_RESULTS)

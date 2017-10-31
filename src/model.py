@@ -105,15 +105,14 @@ class BaseModel(nn.Module):
         return decoded, hidden
 
 
-class Model(nn.Module):
+class Attn_Model(nn.Module):
 
     def __init__(
         self, ntokens=100000, nx=300, nhid=600,
         ncond=300, nlayers=3, dropout=0.5,
-        use_attention=True, n_att_tokens=1000000,
-        n_att_hid=256, learn_attention_embeddings=False,
+        n_attn_tokens=1000000, n_attn_hid=256,
     ):
-        super(Model, self).__init__()
+        super(Attn_Model, self).__init__()
 
         self.keep_prob = dropout
         self.ntokens = ntokens
@@ -122,10 +121,8 @@ class Model(nn.Module):
         self.nhid = nhid
         self.n_rnn_input = nx + ncond
         self.nlayers = nlayers
-        self.use_attention = use_attention
-        self.learn_attention_embeddings = learn_attention_embeddings
-        self.n_att_tokens = n_att_tokens
-        self.n_att_hid = n_att_hid
+        self.n_attn_tokens = n_attn_tokens
+        self.n_attn_hid = n_attn_hid
 
         self.dropout = nn.Dropout(p=self.keep_prob)
 
@@ -142,13 +139,11 @@ class Model(nn.Module):
         self.linear = nn.Linear(in_features=self.nhid,
                                 out_features=self.ntokens)
 
-        if self.use_attention:
-            self.att = EmbeddingSoftAttention(
-                ntokens=self.n_att_tokens,
-                ncond=self.ncond,
-                nhid=self.n_att_hid,
-                learn_embs=self.learn_attention_embeddings
-            )
+        self.attn = EmbeddingSoftAttention(
+            ntokens=self.n_attn_tokens,
+            ncond=self.ncond,
+            nhid=self.n_attn_hid,
+        )
 
         self.init_weights()
 
@@ -174,14 +169,12 @@ class Model(nn.Module):
             hidden[i] = hidden[i].permute(1, 0, 2).contiguous()
 
         assert x.size(0) == conds.size(0)
-        assert self.ncond == conds.size(1)
         assert x.size(0) == lengths.size(0)
 
         lengths = lengths.cpu().data.numpy()
 
         embs = self.embs(x)
-        if self.use_attention:
-            conds = self.att(conds, contexts)
+        conds = self.attn(conds, contexts)
         repeated_conds = conds.view(-1).repeat(maxlen)
         repeated_conds = repeated_conds.view(maxlen, *conds.size())
         repeated_conds = repeated_conds.permute(1, 0, 2)
