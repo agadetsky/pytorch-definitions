@@ -3,6 +3,16 @@ import json
 import numpy as np
 
 
+def seqdropout(x, keep_prob=0.5):
+    mask = np.random.binomial(n=1, p=(1 - keep_prob), size=x.shape)
+    mask = mask * (x != 0).astype(int)
+    mask[:, 0] = 0
+    out = x.copy()
+    out[np.where(mask == 1)] = constants.UNK
+
+    return out
+
+
 def pad(seq, size):
     if len(seq) < size:
         seq.extend([constants.PAD] * (size - len(seq)))
@@ -28,7 +38,7 @@ def batchify(data, vocab, seqlen, batch_size):
         yield np.array(batch_x_i), np.array(batch_y_i)
 
 
-def batchify_defs(data, vocab, cond_wv, batch_size):
+def batchify_defs(data, vocab, cond_wv, batch_size, seqdrop=None):
     i = 0
     while i < len(data):
         batch_x_i = []
@@ -56,6 +66,12 @@ def batchify_defs(data, vocab, cond_wv, batch_size):
             batch_x_i[j] = pad(batch_x_i[j], maxlen)
             batch_y_i[j] = pad(batch_y_i[j], maxlen)
 
+        if seqdrop is not None:
+            batch_x_i = seqdropout(
+                np.array(batch_x_i),
+                keep_prob=seqdrop
+            )
+
         order = np.argsort(lengths)[::-1]
 
         batch_x_i = np.array(batch_x_i)[order]
@@ -65,7 +81,8 @@ def batchify_defs(data, vocab, cond_wv, batch_size):
         yield batch_x_i, batch_y_i, batch_cond_i
 
 
-def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size):
+def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size, 
+                                seqdrop=None):
     i = 0
     while i < len(data):
         batch_x_i = []
@@ -96,6 +113,12 @@ def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size):
         for j in range(len(batch_x_i)):
             batch_x_i[j] = pad(batch_x_i[j], maxlen)
             batch_y_i[j] = pad(batch_y_i[j], maxlen)
+
+        if seqdrop is not None:
+            batch_x_i = seqdropout(
+                np.array(batch_x_i),
+                keep_prob=seqdrop
+            )
 
         order = np.argsort(lengths)[::-1]
 
@@ -172,7 +195,7 @@ class WikiText(object):
         self.train = self.tokenize(open(train, "r").read().lower().split())
         self.val = self.tokenize(open(val, "r").read().lower().split())
         self.test = self.tokenize(open(test, "r").read().lower().split())
-        
+
         if defs_train is not None:
             with open(defs_train, "r") as infile:
                 tmp = json.load(infile)

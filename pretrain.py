@@ -37,6 +37,7 @@ DECAY_FACTOR = 0.1
 DECAY_PATIENCE = 0
 GRAD_CLIP = 5
 MODEL_CKPT = "./pretrain_wiki_exp/best_pretrain"
+RESUME = "./pretrain_wiki_exp/best_pretrain" # or None
 TRAIN = True
 SAVE_VOCAB_TO = "./pretrain_wiki_exp/wiki_vocab.json"
 
@@ -66,7 +67,7 @@ wiki.vocab.save(SAVE_VOCAB_TO)
 
 if TRAIN:
 
-    if INIT_WV:
+    if INIT_WV and RESUME is None:
         tqdm.write("Reading Word2Vec for init embeddings!", file=LOGFILE)
         LOGFILE.flush()
 
@@ -86,7 +87,7 @@ if TRAIN:
         dropout=DROPOUT_PROB,
     )
 
-    if INIT_WV:
+    if INIT_WV and RESUME is None:
 
         tqdm.write("Initialising Encoder weights!", file=LOGFILE)
         LOGFILE.flush()
@@ -101,6 +102,12 @@ if TRAIN:
     # if cuda
     net.cuda()
     ##########
+
+    if RESUME is not None:
+        tqdm.write("Loading Weights for resuming training!", file=LOGFILE)
+        LOGFILE.flush()
+        params = torch.load(RESUME)
+        net.load_state_dict(params["state_dict"])
 
     tqdm.write("Initialising Criterion and Optimizer!", file=LOGFILE)
     LOGFILE.flush()
@@ -247,8 +254,9 @@ if not TRAIN:
     )
 
     net.cuda()  # if cuda
-    params = torch.load(MODEL_CKPT)
-    net.load_state_dict(params["state_dict"])
+
+params = torch.load(MODEL_CKPT)
+net.load_state_dict(params["state_dict"])
 
 tqdm.write("Testing...", file=LOGFILE)
 LOGFILE.flush()
@@ -322,6 +330,7 @@ tqdm.write("DECAY_FACTOR = {0}".format(DECAY_FACTOR), file=EXP_RESULTS)
 tqdm.write("DECAY PATIENCE = {0}".format(DECAY_PATIENCE), file=EXP_RESULTS)
 tqdm.write("GRAD_CLIP = {0}".format(GRAD_CLIP), file=EXP_RESULTS)
 tqdm.write("MODEL_CKPT = {0}".format(MODEL_CKPT), file=EXP_RESULTS)
+tqdm.write("RESUME = {0}".format(RESUME), file=EXP_RESULTS)
 tqdm.write("TRAIN = {0}".format(TRAIN), file=EXP_RESULTS)
 tqdm.write("SAVE_VOCAB_TO = {0}\n\n".format(SAVE_VOCAB_TO), file=EXP_RESULTS)
 tqdm.write("RESULTS:\n", file=EXP_RESULTS)

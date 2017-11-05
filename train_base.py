@@ -19,8 +19,8 @@ TEST_DATA = "./data/main_data/definitions_test.json"
 INIT_MODEL_CKPT = "./pretrain_wiki_exp/best_pretrain"  # or None
 MODEL_VOCAB = "./pretrain_wiki_exp/wiki_vocab.json"  # or None
 COND_TYPE = 0  # 0 for Zeros, 1 for Word2Vec, 2 for AdaGram
-COND_WEIGHTS = None # None for Zeros or Path for Word2Vec and AdaGram
-FIX_EMBEDDINGS = False
+COND_WEIGHTS = None  # None for Zeros or Path for Word2Vec and AdaGram
+FIX_EMBEDDINGS = True
 SEED = 42
 CUDA = True
 BATCH_SIZE = 16
@@ -30,11 +30,15 @@ NHID = NX + NCOND
 NUM_EPOCHS = 35
 NLAYERS = 3
 DROPOUT_PROB = 0.5
+SEQDROPOUT_PROB = 0.5
+SEQDROPOUT_DECAY_RATE = 2
+SEQDROPOUT_DECAY_EACH = 10
 INITIAL_LR = 0.001
 DECAY_FACTOR = 0.1
 DECAY_PATIENCE = 0
 GRAD_CLIP = 5
 MODEL_CKPT = "./train_def_zeros_exp/best_train_type_{0}".format(COND_TYPE)
+RESUME = None  # or None
 TRAIN = True
 
 LOGFILE = open('./train_def_zeros_exp/log.txt', 'a')
@@ -68,7 +72,6 @@ elif COND_TYPE == 1:
     cond = Word2Vec(COND_WEIGHTS)
 elif COND_TYPE == 2:
     import julia
-    j = julia.Julia()
     cond = AdaGram(COND_WEIGHTS)
 else:
     raise ValueError("No such COND_TYPE = {0}".format(COND_TYPE))
@@ -87,8 +90,15 @@ if TRAIN:
     )
 
     net.cuda()  # if cuda
-    if INIT_MODEL_CKPT is not None:
-        params = torch.load(INIT_MODEL_CKPT)
+
+    if RESUME is None:
+        if INIT_MODEL_CKPT is not None:
+            params = torch.load(INIT_MODEL_CKPT)
+            net.load_state_dict(params["state_dict"])
+    else:
+        tqdm.write("Loading Weights for resuming training!", file=LOGFILE)
+        LOGFILE.flush()
+        params = torch.load(RESUME)
         net.load_state_dict(params["state_dict"])
 
     net.embs.weight.requires_grad = not FIX_EMBEDDINGS
@@ -128,7 +138,10 @@ if TRAIN:
         )
         with tqdm(total=num_batches, file=LOGFILE) as pbar:
             train_iter = batchify_defs(
-                defs.train, defs.vocab, cond, BATCH_SIZE
+                defs.train, defs.vocab, cond, BATCH_SIZE,
+                SEQDROPOUT_PROB / SEQDROPOUT_DECAY_RATE**(
+                    (epoch + 1) // SEQDROPOUT_DECAY_EACH
+                )
             )
             for batch_x, batch_y, conds in train_iter:
                 hidden = net.init_hidden(
@@ -246,8 +259,9 @@ if not TRAIN:
     )
 
     net.cuda()  # if cuda
-    params = torch.load(MODEL_CKPT)
-    net.load_state_dict(params["state_dict"])
+
+params = torch.load(MODEL_CKPT)
+net.load_state_dict(params["state_dict"])
 
 tqdm.write("Testing...", file=LOGFILE)
 LOGFILE.flush()
@@ -315,11 +329,21 @@ tqdm.write("NHID = {0}".format(NCOND), file=EXP_RESULTS)
 tqdm.write("NUM_EPOCHS = {0}".format(NUM_EPOCHS), file=EXP_RESULTS)
 tqdm.write("NLAYERS = {0}".format(NLAYERS), file=EXP_RESULTS)
 tqdm.write("DROPOUT_PROB = {0}".format(DROPOUT_PROB), file=EXP_RESULTS)
+tqdm.write("SEQDROPOUT_PROB = {0}".format(SEQDROPOUT_PROB), file=EXP_RESULTS)
+tqdm.write(
+    "SEQDROPOUT_DECAY_RATE = {0}".format(SEQDROPOUT_DECAY_RATE),
+    file=EXP_RESULTS
+)
+tqdm.write(
+    "SEQDROPOUT_DECAY_EACH = {0}".format(SEQDROPOUT_DECAY_EACH),
+    file=EXP_RESULTS
+)
 tqdm.write("INITIAL_LR = {0}".format(INITIAL_LR), file=EXP_RESULTS)
 tqdm.write("DECAY_FACTOR = {0}".format(DECAY_FACTOR), file=EXP_RESULTS)
 tqdm.write("DECAY PATIENCE = {0}".format(DECAY_PATIENCE), file=EXP_RESULTS)
 tqdm.write("GRAD_CLIP = {0}".format(GRAD_CLIP), file=EXP_RESULTS)
 tqdm.write("MODEL_CKPT = {0}".format(MODEL_CKPT), file=EXP_RESULTS)
+tqdm.write("RESUME = {0}".format(RESUME), file=EXP_RESULTS)
 tqdm.write("TRAIN = {0}\n\n".format(TRAIN), file=EXP_RESULTS)
 tqdm.write("RESULTS:\n", file=EXP_RESULTS)
 if TRAIN:

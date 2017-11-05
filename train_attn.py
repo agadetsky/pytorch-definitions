@@ -29,11 +29,15 @@ NUM_EPOCHS = 35
 NLAYERS = 3
 N_ATTN_HID = 256
 DROPOUT_PROB = 0.5
+SEQDROPOUT_PROB = 0.5
+SEQDROPOUT_DECAY_RATE = 2
+SEQDROPOUT_DECAY_EACH = 10
 INITIAL_LR = 0.001
 DECAY_FACTOR = 0.1
 DECAY_PATIENCE = 0
 GRAD_CLIP = 5
 MODEL_CKPT = "./train_def_attn_exp/best_train_attn"
+RESUME = "./train_def_attn_exp/best_train_attn" # or None if no resume
 TRAIN = True
 
 LOGFILE = open('./train_def_attn_exp/log.txt', 'a')
@@ -74,14 +78,20 @@ if TRAIN:
 
     net.cuda()  # if cuda
 
-    if INIT_MODEL_CKPT is not None:
-        params = torch.load(INIT_MODEL_CKPT)
-        missing = list(
-            set(net.state_dict().keys()) - set(params["state_dict"])
-        )
-        for key in missing:
-            params["state_dict"][key] = net.state_dict()[key]
+    if RESUME is None:
+        if INIT_MODEL_CKPT is not None:
+            params = torch.load(INIT_MODEL_CKPT)
+            missing = list(
+                set(net.state_dict().keys()) - set(params["state_dict"])
+            )
+            for key in missing:
+                params["state_dict"][key] = net.state_dict()[key]
 
+            net.load_state_dict(params["state_dict"])
+    else:
+        tqdm.write("Loading Weights for resuming training!", file=LOGFILE)
+        LOGFILE.flush()
+        params = torch.load(RESUME)
         net.load_state_dict(params["state_dict"])
 
     net.embs.weight.requires_grad = not FIX_EMBEDDINGS
@@ -121,7 +131,10 @@ if TRAIN:
         )
         with tqdm(total=num_batches, file=LOGFILE) as pbar:
             train_iter = batchify_defs_with_examples(
-                defs.train, defs.vocab, defs.cond_vocab, BATCH_SIZE
+                defs.train, defs.vocab, defs.cond_vocab, BATCH_SIZE,
+                SEQDROPOUT_PROB / SEQDROPOUT_DECAY_RATE**(
+                    (epoch + 1) // SEQDROPOUT_DECAY_EACH
+                )
             )
             for batch_x, batch_y, conds, contexts in train_iter:
                 hidden = net.init_hidden(
@@ -258,8 +271,9 @@ if not TRAIN:
     )
 
     net.cuda()  # if cuda
-    params = torch.load(MODEL_CKPT)
-    net.load_state_dict(params["state_dict"])
+
+params = torch.load(MODEL_CKPT)
+net.load_state_dict(params["state_dict"])
 
 tqdm.write("Testing...", file=LOGFILE)
 LOGFILE.flush()
@@ -335,11 +349,21 @@ tqdm.write("NUM_EPOCHS = {0}".format(NUM_EPOCHS), file=EXP_RESULTS)
 tqdm.write("NLAYERS = {0}".format(NLAYERS), file=EXP_RESULTS)
 tqdm.write("N_ATTN_HID = {0}".format(N_ATTN_HID), file=EXP_RESULTS)
 tqdm.write("DROPOUT_PROB = {0}".format(DROPOUT_PROB), file=EXP_RESULTS)
+tqdm.write("SEQDROPOUT_PROB = {0}".format(SEQDROPOUT_PROB), file=EXP_RESULTS)
+tqdm.write(
+    "SEQDROPOUT_DECAY_RATE = {0}".format(SEQDROPOUT_DECAY_RATE),
+    file=EXP_RESULTS
+)
+tqdm.write(
+    "SEQDROPOUT_DECAY_EACH = {0}".format(SEQDROPOUT_DECAY_EACH),
+    file=EXP_RESULTS
+)
 tqdm.write("INITIAL_LR = {0}".format(INITIAL_LR), file=EXP_RESULTS)
 tqdm.write("DECAY_FACTOR = {0}".format(DECAY_FACTOR), file=EXP_RESULTS)
 tqdm.write("DECAY PATIENCE = {0}".format(DECAY_PATIENCE), file=EXP_RESULTS)
 tqdm.write("GRAD_CLIP = {0}".format(GRAD_CLIP), file=EXP_RESULTS)
 tqdm.write("MODEL_CKPT = {0}".format(MODEL_CKPT), file=EXP_RESULTS)
+tqdm.write("RESUME = {0}".format(RESUME), file=EXP_RESULTS)
 tqdm.write("TRAIN = {0}\n\n".format(TRAIN), file=EXP_RESULTS)
 tqdm.write("RESULTS:\n", file=EXP_RESULTS)
 if TRAIN:

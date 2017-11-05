@@ -16,15 +16,6 @@ def repackage_hidden(h):
         return tuple(repackage_hidden(v) for v in h)
 
 
-def seqdropout(x, keep_prob=0.5):
-    mask = np.random.binomial(n=1, p=(1 - keep_prob), size=x.shape)
-    mask[:, 0] = 0
-    out = x.copy()
-    out[np.where(mask == 1)] = constants.UNK
-
-    return out
-
-
 def flatten(l):
     for el in l:
         if isinstance(el, Iterable) and not isinstance(el, (str, bytes)):
