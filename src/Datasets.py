@@ -81,7 +81,7 @@ def batchify_defs(data, vocab, cond_wv, batch_size, seqdrop=None):
         yield batch_x_i, batch_y_i, batch_cond_i
 
 
-def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size, 
+def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size,
                                 seqdrop=None):
     i = 0
     while i < len(data):
@@ -90,6 +90,7 @@ def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size,
         batch_cond_i = []
         batch_context_i = []
         lengths = []
+        cond_maxlen = 0
         for j in range(batch_size):
             batch_x_i.append(
                 vocab.encode_seq(data[i][0] + data[i][1])
@@ -104,6 +105,7 @@ def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size,
                 cond_vocab.encode_seq(data[i][2])
             )
             lengths.append(len(batch_x_i[-1]))
+            cond_maxlen = max(cond_maxlen, len(data[i][2]))
 
             i += 1
             if i >= len(data):
@@ -113,6 +115,7 @@ def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size,
         for j in range(len(batch_x_i)):
             batch_x_i[j] = pad(batch_x_i[j], maxlen)
             batch_y_i[j] = pad(batch_y_i[j], maxlen)
+            batch_context_i[j] = pad(batch_context_i[j], cond_maxlen)
 
         if seqdrop is not None:
             batch_x_i = seqdropout(
@@ -125,7 +128,7 @@ def batchify_defs_with_examples(data, vocab, cond_vocab, batch_size,
         batch_x_i = np.array(batch_x_i)[order]
         batch_y_i = np.array(batch_y_i)[order]
         batch_cond_i = np.array(batch_cond_i)[order].squeeze()
-        batch_context_i = np.array(batch_context_i)[order].tolist()
+        batch_context_i = np.array(batch_context_i)[order]
         yield batch_x_i, batch_y_i, batch_cond_i, batch_context_i
 
 

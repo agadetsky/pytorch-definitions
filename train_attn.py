@@ -1,6 +1,7 @@
 import src.constants as constants
 from src.Datasets import Definitions, batchify_defs_with_examples
 from src.model import Attn_Model
+from src.data_workflow import Word2Vec
 import torch
 from torch.autograd import Variable
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -18,7 +19,8 @@ VAL_DATA = "./data/main_data/definitions_val.json"
 TEST_DATA = "./data/main_data/definitions_test.json"
 INIT_MODEL_CKPT = "./pretrain_wiki_exp/best_pretrain"  # or None
 MODEL_VOCAB = "./pretrain_wiki_exp/wiki_vocab.json"  # or None
-FIX_EMBEDDINGS = False
+WV_WEIGHTS = "./data/w2v_embeddings/GoogleNews-vectors-negative300.bin"
+FIX_EMBEDDINGS = True
 SEED = 42
 CUDA = True
 BATCH_SIZE = 16
@@ -29,15 +31,15 @@ NUM_EPOCHS = 35
 NLAYERS = 3
 N_ATTN_HID = 256
 DROPOUT_PROB = 0.5
-SEQDROPOUT_PROB = 0.5
-SEQDROPOUT_DECAY_RATE = 2
+SEQDROPOUT_PROB = 1
+SEQDROPOUT_DECAY_RATE = 1
 SEQDROPOUT_DECAY_EACH = 10
 INITIAL_LR = 0.001
 DECAY_FACTOR = 0.1
 DECAY_PATIENCE = 0
 GRAD_CLIP = 5
 MODEL_CKPT = "./train_def_attn_exp/best_train_attn"
-RESUME = "./train_def_attn_exp/best_train_attn" # or None if no resume
+RESUME = None # or None if no resume
 TRAIN = True
 
 LOGFILE = open('./train_def_attn_exp/log.txt', 'a')
@@ -88,6 +90,21 @@ if TRAIN:
                 params["state_dict"][key] = net.state_dict()[key]
 
             net.load_state_dict(params["state_dict"])
+
+        tqdm.write("Doing attention init!", file=LOGFILE)
+        LOGFILE.flush()
+        
+        w2v = Word2Vec(
+            WV_WEIGHTS
+        )
+        
+        attn_embs_init = net.attn.embs.weight.data.cpu().numpy()
+        for word in defs.cond_vocab.w2i.keys():
+            if word in w2v.w2i:
+                cur_idx = defs.cond_vocab.w2i[word]
+                attn_embs_init[cur_idx] = w2v.get_cond_vector(word)
+
+        net.attn.embs.weight.data.copy_(torch.from_numpy(attn_embs_init))
     else:
         tqdm.write("Loading Weights for resuming training!", file=LOGFILE)
         LOGFILE.flush()
@@ -151,13 +168,7 @@ if TRAIN:
                 )
                 conds = conds.cuda().long()
                 batch_y = Variable(torch.from_numpy(batch_y)).cuda().view(-1)
-
-                for i in range(len(contexts)):
-                    contexts[i] = Variable(
-                        from_numpy(
-                            np.array(contexts[i])
-                        )
-                    ).cuda().long()
+                contexts = Variable(torch.from_numpy(contexts)).cuda().long()
 
                 output, hidden = net(
                     batch_x, lengths, maxlen, conds, contexts, hidden
@@ -217,12 +228,7 @@ if TRAIN:
                 )
                 conds = conds.cuda().long()
                 batch_y = Variable(torch.from_numpy(batch_y)).cuda().view(-1)
-                for i in range(len(contexts)):
-                    contexts[i] = Variable(
-                        from_numpy(
-                            np.array(contexts[i])
-                        )
-                    ).cuda().long()
+                contexts = Variable(torch.from_numpy(contexts)).cuda().long()
 
                 output, hidden = net(
                     batch_x, lengths, maxlen, conds, contexts, hidden
@@ -305,12 +311,7 @@ with tqdm(total=num_batches, file=LOGFILE) as pbar:
         )
         conds = conds.cuda().long()
         batch_y = Variable(torch.from_numpy(batch_y)).cuda().view(-1)
-        for i in range(len(contexts)):
-            contexts[i] = Variable(
-                from_numpy(
-                    np.array(contexts[i])
-                )
-            ).cuda().long()
+        contexts = Variable(torch.from_numpy(contexts)).cuda().long()
 
         output, hidden = net(
             batch_x, lengths, maxlen, conds, contexts, hidden
@@ -338,6 +339,7 @@ tqdm.write("VAL_DATA = {0}".format(VAL_DATA), file=EXP_RESULTS)
 tqdm.write("TEST_DATA = {0}".format(TEST_DATA), file=EXP_RESULTS)
 tqdm.write("INIT_MODEL_CKPT = {0}".format(INIT_MODEL_CKPT), file=EXP_RESULTS)
 tqdm.write("MODEL_VOCAB = {0}".format(MODEL_VOCAB), file=EXP_RESULTS)
+tqdm.write("WV_WEIGHTS = {0}".format(WV_WEIGHTS), file=EXP_RESULTS)
 tqdm.write("FIX_EMBEDDINGS = {0}".format(FIX_EMBEDDINGS), file=EXP_RESULTS)
 tqdm.write("SEED = {0}".format(SEED), file=EXP_RESULTS)
 tqdm.write("CUDA = {0}".format(CUDA), file=EXP_RESULTS)

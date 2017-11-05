@@ -8,4 +8,4 @@ W2V vectors
 https://s3.amazonaws.com/mordecai-geo/GoogleNews-vectors-negative300.bin.gz
 
 AdaGram vectors
-TBD
+https://s3-eu-west-1.amazonaws.com/bayesgroup.ai/huang_super_300D_0.1_min20_hs_t1e-17.model

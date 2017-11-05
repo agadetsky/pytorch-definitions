@@ -7,7 +7,7 @@ import constants
 
 class EmbeddingSoftAttention(nn.Module):
 
-    def __init__(self, ntokens, ncond, nhid, learn_embs=True):
+    def __init__(self, ntokens, ncond, nhid):
         super(EmbeddingSoftAttention, self).__init__()
         self.ntokens = ntokens
         self.ncond = ncond
@@ -33,16 +33,14 @@ class EmbeddingSoftAttention(nn.Module):
         )
 
     def forward(self, x, context):
-        batch_size = x.size(0)
         x_embs = self.embs(x)
-        masks = []
-        for i in range(batch_size):
-            context_embs_i = self.embs(context[i])
-            masks.append(
-                F.sigmoid(
-                    self.a_linear(
-                        self.ann(context_embs_i).mean(0)
-                    )
-                )
+        context_embs = self.embs(context)
+        lengths = (context != constants.PAD)
+        for_sum_mask = lengths.unsqueeze(2).float()
+        lengths = lengths.sum(1).float().view(-1, 1)
+        mask = F.sigmoid(
+            self.a_linear(
+                (self.ann(context_embs) * for_sum_mask).sum(1) / lengths
             )
-        return torch.cat(masks, 0).view(batch_size, self.ncond) * x_embs
+        )
+        return mask * x_embs

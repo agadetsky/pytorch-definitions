@@ -5,14 +5,6 @@ import torch
 import numpy as np
 
 
-def train():
-    pass
-
-
-def eval():
-    pass
-
-
 def greedy_sample(
         model, dictionary, cond_vec,
         start=constants.BOS_WORD, end=constants.EOS_WORD,
