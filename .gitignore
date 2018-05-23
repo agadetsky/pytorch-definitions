@@ -1,2 +1,4 @@
 *.pyc
 data/
+nohup.out
+.ipynb_checkpoints
