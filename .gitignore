@@ -2,3 +2,4 @@
 data/
 nohup.out
 .ipynb_checkpoints
+sftp-config.json
