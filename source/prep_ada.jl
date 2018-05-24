@@ -25,9 +25,6 @@ function main(args)
     end
 
     parsed_args = parse_args(s)
-    println(parsed_args["defs"])
-    println(parsed_args["save"])
-    println(parsed_args["ada"])
     if length(parsed_args["defs"]) != length(parsed_args["save"])
         error("Number of defs files must match number of save locations")
     end
