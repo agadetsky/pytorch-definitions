@@ -1,7 +1,8 @@
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import constants
 import json
 import numpy as np
+import math
 
 
 class Vocabulary:
@@ -66,27 +67,58 @@ class Vocabulary:
             self.tok2id[self.id2tok[i]] = i
 
 
+def pad(seq, size, value):
+    if len(seq) < size:
+        seq.extend([value] * (size - len(seq)))
+    return seq
+
+
 class LanguageModelingDataset(Dataset):
     """LanguageModeling dataset."""
 
-    def __init__(self, file, bptt):
+    def __init__(self, file, vocab_path, bptt, cond_dim):
         """
         Args:
-            file (string): Path to the file.
+            file (string): Path to the file
+            vocab_path (string): path to word vocab to use
             bptt (int): length of one sentence
-            vocab (Vocabulary): word vocab to use
+            cond_dim (int): dimension of all conditionings
         """
-        pass
+        with open(file, "r") as infile:
+            self.data = infile.read().lower().split()
+        self.voc = Vocabulary()
+        self.voc.load(vocab_path)
+        self.bptt = bptt
+        self.cond_dim = cond_dim
 
     def __len__(self):
-        pass
+        return math.ceil(len(self.data) / (self.bptt + 1))
 
     def __getitem__(self, idx):
-        pass
+        i = idx + self.bptt * idx
+        sample = {
+            "x": self.voc.encode_seq(self.data[i: i + self.bptt]),
+            "y": self.voc.encode_seq(self.data[i + 1: i + self.bptt + 1]),
+            "dummy_cond": np.zeros(self.cond_dim)
+        }
+        return sample
 
 
 def LanguageModelingCollate(batch):
-    pass
+    batch_x = []
+    batch_y = []
+    batch_dummy_cond = []
+    for i in range(len(batch)):
+        batch_x.append(batch[i]["x"])
+        batch_y.append(batch[i]["y"])
+        batch_dummy_cond.append(batch[i]["dummy_cond"])
+
+    ret_batch = {
+        "x": np.array(batch_x),
+        "y": np.array(batch_y),
+        "dummy_cond": np.array(batch_dummy_cond)
+    }
+    return ret_batch
 
 
 class DefinitionModelingDataset(Dataset):
@@ -97,7 +129,7 @@ class DefinitionModelingDataset(Dataset):
                  ch_vocab_path, use_seed):
         """
         Args:
-            file (string): Path to the file.
+            file (string): path to the file
             vocab_path (string): path to word vocab to use
             input_vectors_path (string): path to vectors for Input conditioning
             input_adaptive_vectors_path (string): path to vectors for Input-Adaptive conditioning
@@ -129,19 +161,13 @@ class DefinitionModelingDataset(Dataset):
             "word": self.context_voc.encode(self.data[idx][0][0]),
             "context": self.context_voc.encode_seq(self.data[idx][2]),
             "CH": [constants.BOS_IDX] + self.ch_voc.encode_seq(list(self.data[idx][0][0])) + [constants.EOS_IDX],
-            "CH_maxlen": self.voc.tok_maxlen + 2
+            "CH_maxlen": self.ch_voc.tok_maxlen + 2
         }
         # CH_maxlen: +2 because EOS + BOS
         if self.use_seed:
             sample["y"] = [sample["x"][0]] + sample["y"]
             sample["x"] = self.voc.encode_seq(self.data[idx][0]) + sample["x"]
         return sample
-
-
-def pad(seq, size, value):
-    if len(seq) < size:
-        seq.extend([value] * (size - len(seq)))
-    return seq
 
 
 def DefinitionModelingCollate(batch):

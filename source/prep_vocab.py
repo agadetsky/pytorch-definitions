@@ -54,7 +54,7 @@ if args.lm is not None:
 
 for elem in definitions:
     voc.add_token(elem[0][0])
-    voc.tok_maxlen = max(len(elem[0][0]), voc.tok_maxlen)
+    char_voc.tok_maxlen = max(len(elem[0][0]), char_voc.tok_maxlen)
     for c in elem[0][0]:
         char_voc.add_token(c)
     for i in range(len(elem[1])):
