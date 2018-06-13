@@ -215,14 +215,11 @@ def DefinitionModelingCollate(batch):
     ret_batch = {
         "x": batch_x,
         "y": batch_y,
-        "xy_maxlen": definition_maxlen,
         "input": batch_input,
         "input_adaptive": batch_input_adaptive,
         "word": batch_word,
         "context": batch_context,
-        "ctx_maxlen": context_maxlen,
         "CH": batch_ch,
-        "CH_maxlen": CH_maxlen
     }
 
     return ret_batch
