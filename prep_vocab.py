@@ -1,4 +1,4 @@
-from datasets import Vocabulary
+from source.datasets import Vocabulary
 import argparse
 import json
 
