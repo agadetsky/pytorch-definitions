@@ -6,53 +6,6 @@ import constants
 from layers import Input, InputAttention, CharCNN, Hidden, Gated
 
 
-class Params():
-
-    def __init__(self):
-        # type of training
-        self.pretrain = None
-        # Basic RNN parameters
-        self.nx = None
-        self.ntokens = None
-        self.nlayers = None
-        self.nhid = None
-        self.rnn_dropout = None
-        # Input parameters
-        self.use_input = None
-        self.input_dim = None
-        # Input adaptive parameters
-        self.use_input_adaptive = None
-        self.input_adaptive_dim = None
-        # Input attention parameters
-        self.use_input_attention = None
-        self.n_attn_tokens = None
-        self.n_attn_embsize = None
-        self.n_attn_hid = None
-        self.attn_dropout = None
-        self.attn_sparse = None
-        # CH parameters
-        self.use_ch = None
-        self.n_ch_tokens = None
-        self.ch_maxlen = None
-        self.ch_emb_size = None
-        self.ch_feature_maps = None
-        self.ch_kernel_sizes = None
-        # Hidden parameters
-        self.use_hidden = None
-        # Hidden Adaptive parameters
-        self.use_hidden_adaptive = None
-        # Hidden Attention parameters
-        self.use_hidden_attention = None
-        # Hidden shared parameters
-        self.n_hidden_out = None
-        # Gated parameters
-        self.use_gated = None
-        # Gated Adaptive parameters
-        self.use_gated_adaptive = None
-        # Gated Attention parameters
-        self.use_gated_attention = None
-
-
 class DefinitionModelingModel(nn.Module):
     """Definition modeling class"""
 
@@ -87,7 +40,7 @@ class DefinitionModelingModel(nn.Module):
         self.is_conditioned += self.gated_used
 
         if not self.is_conditioned and self.params["use_ch"]:
-            raise ValueError
+            raise ValueError("Don't use CH conditioning without others")
 
         self.embs = nn.Embedding(
             num_embeddings=self.params["ntokens"],
@@ -166,7 +119,7 @@ class DefinitionModelingModel(nn.Module):
         lengths = (x != constants.PAD_IDX).sum(dim=1).detach()
         maxlen = lengths.max().item()
         embs = self.embs(x)
-        if self.params["pretrain"]:
+        if self.params["pretrain"] and self.cond_size > 0:
             assert input.size(1) == self.cond_size  # DataLoader gave bad size
             all_conds = input  # because DataLoader gives dummy input
         else:
@@ -199,7 +152,7 @@ class DefinitionModelingModel(nn.Module):
             output = self.gated(output, all_conds)
 
         decoded = self.linear(
-            output.view(
+            output.contiguous().view(
                 output.size(0) * output.size(1),
                 output.size(2)
             )

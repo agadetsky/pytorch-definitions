@@ -99,7 +99,7 @@ class LanguageModelingDataset(Dataset):
         sample = {
             "x": self.voc.encode_seq(self.data[i: i + self.bptt]),
             "y": self.voc.encode_seq(self.data[i + 1: i + self.bptt + 1]),
-            "dummy_cond": np.zeros(self.cond_dim)
+            "dummy_cond": np.zeros(self.cond_dim, dtype=np.float32)
         }
         return sample
 
@@ -108,10 +108,16 @@ def LanguageModelingCollate(batch):
     batch_x = []
     batch_y = []
     batch_dummy_cond = []
+    maxlen = -float("inf")
     for i in range(len(batch)):
         batch_x.append(batch[i]["x"])
         batch_y.append(batch[i]["y"])
         batch_dummy_cond.append(batch[i]["dummy_cond"])
+        maxlen = max(maxlen, len(batch[i]["x"]), len(batch[i]["y"]))
+
+    for i in range(len(batch)):
+        batch_x[i] = pad(batch_x[i], maxlen, constants.PAD_IDX)
+        batch_y[i] = pad(batch_y[i], maxlen, constants.PAD_IDX)
 
     ret_batch = {
         "x": np.array(batch_x),
@@ -206,8 +212,11 @@ def DefinitionModelingCollate(batch):
     order = np.argsort(definition_lengths)[::-1]
     batch_x = np.array(batch_x)[order]
     batch_y = np.array(batch_y)[order]
-    batch_input = np.array(batch_input)[order]
-    batch_input_adaptive = np.array(batch_input_adaptive)[order]
+    batch_input = np.array(batch_input, dtype=np.float32)[order]
+    batch_input_adaptive = np.array(
+        batch_input_adaptive,
+        dtype=np.float32
+    )[order]
     batch_word = np.array(batch_word)[order]
     batch_context = np.array(batch_context)[order]
     batch_ch = np.array(batch_ch)[order]
