@@ -76,20 +76,18 @@ def pad(seq, size, value):
 class LanguageModelingDataset(Dataset):
     """LanguageModeling dataset."""
 
-    def __init__(self, file, vocab_path, bptt, cond_dim):
+    def __init__(self, file, vocab_path, bptt):
         """
         Args:
             file (string): Path to the file
             vocab_path (string): path to word vocab to use
             bptt (int): length of one sentence
-            cond_dim (int): dimension of all conditionings
         """
         with open(file, "r") as infile:
-            self.data = infile.read().lower().split()
+            self.data = infile.read().lower().split()[:100]
         self.voc = Vocabulary()
         self.voc.load(vocab_path)
         self.bptt = bptt
-        self.cond_dim = cond_dim
 
     def __len__(self):
         return math.ceil(len(self.data) / (self.bptt + 1))
@@ -99,7 +97,6 @@ class LanguageModelingDataset(Dataset):
         sample = {
             "x": self.voc.encode_seq(self.data[i: i + self.bptt]),
             "y": self.voc.encode_seq(self.data[i + 1: i + self.bptt + 1]),
-            "dummy_cond": np.zeros(self.cond_dim, dtype=np.float32)
         }
         return sample
 
@@ -107,12 +104,10 @@ class LanguageModelingDataset(Dataset):
 def LanguageModelingCollate(batch):
     batch_x = []
     batch_y = []
-    batch_dummy_cond = []
     maxlen = -float("inf")
     for i in range(len(batch)):
         batch_x.append(batch[i]["x"])
         batch_y.append(batch[i]["y"])
-        batch_dummy_cond.append(batch[i]["dummy_cond"])
         maxlen = max(maxlen, len(batch[i]["x"]), len(batch[i]["y"]))
 
     for i in range(len(batch)):
@@ -122,7 +117,6 @@ def LanguageModelingCollate(batch):
     ret_batch = {
         "x": np.array(batch_x),
         "y": np.array(batch_y),
-        "dummy_cond": np.array(batch_dummy_cond)
     }
     return ret_batch
 
@@ -130,9 +124,9 @@ def LanguageModelingCollate(batch):
 class DefinitionModelingDataset(Dataset):
     """DefinitionModeling dataset."""
 
-    def __init__(self, file, vocab_path, input_vectors_path,
-                 input_adaptive_vectors_path, context_vocab_path,
-                 ch_vocab_path, use_seed):
+    def __init__(self, file, vocab_path, input_vectors_path=None,
+                 input_adaptive_vectors_path=None, context_vocab_path=None,
+                 ch_vocab_path=None, use_seed=False):
         """
         Args:
             file (string): path to the file
@@ -144,15 +138,19 @@ class DefinitionModelingDataset(Dataset):
             use_seed (bool): whether to use Seed conditioning or not
         """
         with open(file, "r") as infile:
-            self.data = json.load(infile)
+            self.data = json.load(infile)[:100]
         self.voc = Vocabulary()
         self.voc.load(vocab_path)
-        self.context_voc = Vocabulary()
-        self.context_voc.load(context_vocab_path)
-        self.ch_voc = Vocabulary()
-        self.ch_voc.load(ch_vocab_path)
-        self.input_vectors = np.load(input_vectors_path)
-        self.input_adaptive_vectors = np.load(input_adaptive_vectors_path)
+        if context_vocab_path is not None:
+            self.context_voc = Vocabulary()
+            self.context_voc.load(context_vocab_path)
+        if ch_vocab_path is not None:
+            self.ch_voc = Vocabulary()
+            self.ch_voc.load(ch_vocab_path)
+        if input_vectors_path is not None:
+            self.input_vectors = np.load(input_vectors_path)
+        if input_adaptive_vectors_path is not None:
+            self.input_adaptive_vectors = np.load(input_adaptive_vectors_path)
         self.use_seed = use_seed
 
     def __len__(self):
@@ -162,14 +160,20 @@ class DefinitionModelingDataset(Dataset):
         sample = {
             "x": self.voc.encode_seq(self.data[idx][1]),
             "y": self.voc.encode_seq(self.data[idx][1][1:] + [constants.EOS]),
-            "input": self.input_vectors[idx],
-            "input_adaptive": self.input_adaptive_vectors[idx],
-            "word": self.context_voc.encode(self.data[idx][0][0]),
-            "context": self.context_voc.encode_seq(self.data[idx][2]),
-            "CH": [constants.BOS_IDX] + self.ch_voc.encode_seq(list(self.data[idx][0][0])) + [constants.EOS_IDX],
-            "CH_maxlen": self.ch_voc.tok_maxlen + 2
         }
-        # CH_maxlen: +2 because EOS + BOS
+        if hasattr(self, "input_vectors"):
+            sample["input"] = self.input_vectors[idx]
+        if hasattr(self, "input_adaptive_vectors"):
+            sample["input_adaptive"] = self.input_adaptive_vectors[idx]
+        if hasattr(self, "context_voc"):
+            sample["word"] = self.context_voc.encode(self.data[idx][0][0])
+            sample["context"] = self.context_voc.encode_seq(self.data[idx][2])
+        if hasattr(self, "ch_voc"):
+            sample["CH"] = [constants.BOS_IDX] + \
+                self.ch_voc.encode_seq(list(self.data[idx][0][0])) + \
+                [constants.EOS_IDX]
+            # CH_maxlen: +2 because EOS + BOS
+            sample["CH_maxlen"] = self.ch_voc.tok_maxlen + 2
         if self.use_seed:
             sample["y"] = [sample["x"][0]] + sample["y"]
             sample["x"] = self.voc.encode_seq(self.data[idx][0]) + sample["x"]
@@ -179,24 +183,36 @@ class DefinitionModelingDataset(Dataset):
 def DefinitionModelingCollate(batch):
     batch_x = []
     batch_y = []
-    batch_input = []
-    batch_input_adaptive = []
-    batch_word = []
-    batch_context = []
-    batch_ch = []
-    batch_lengths = []
-    context_maxlen = -float("inf")
-    CH_maxlen = batch[0]["CH_maxlen"]
+    is_w2v = "input" in batch[0]
+    is_ada = "input_adaptive" in batch[0]
+    is_attn = "word" in batch[0] and "context" in batch[0]
+    is_ch = "CH" in batch[0] and "CH_maxlen" in batch[0]
+    if is_w2v:
+        batch_input = []
+    if is_ada:
+        batch_input_adaptive = []
+    if is_attn:
+        batch_word = []
+        batch_context = []
+        context_maxlen = -float("inf")
+    if is_ch:
+        batch_ch = []
+        CH_maxlen = batch[0]["CH_maxlen"]
+
     definition_lengths = []
     for i in range(len(batch)):
         batch_x.append(batch[i]["x"])
         batch_y.append(batch[i]["y"])
-        batch_input.append(batch[i]["input"])
-        batch_input_adaptive.append(batch[i]["input_adaptive"])
-        batch_word.append(batch[i]["word"])
-        batch_context.append(batch[i]["context"])
-        batch_ch.append(batch[i]["CH"])
-        context_maxlen = max(context_maxlen, len(batch_context[-1]))
+        if is_w2v:
+            batch_input.append(batch[i]["input"])
+        if is_ada:
+            batch_input_adaptive.append(batch[i]["input_adaptive"])
+        if is_attn:
+            batch_word.append(batch[i]["word"])
+            batch_context.append(batch[i]["context"])
+            context_maxlen = max(context_maxlen, len(batch_context[-1]))
+        if is_ch:
+            batch_ch.append(batch[i]["CH"])
         definition_lengths.append(len(batch_x[-1]))
 
     definition_maxlen = max(definition_lengths)
@@ -204,31 +220,36 @@ def DefinitionModelingCollate(batch):
     for i in range(len(batch)):
         batch_x[i] = pad(batch_x[i], definition_maxlen, constants.PAD_IDX)
         batch_y[i] = pad(batch_y[i], definition_maxlen, constants.PAD_IDX)
-        batch_context[i] = pad(
-            batch_context[i], context_maxlen, constants.PAD_IDX
-        )
-        batch_ch[i] = pad(batch_ch[i], CH_maxlen, constants.PAD_IDX)
+        if is_attn:
+            batch_context[i] = pad(
+                batch_context[i], context_maxlen, constants.PAD_IDX
+            )
+        if is_ch:
+            batch_ch[i] = pad(batch_ch[i], CH_maxlen, constants.PAD_IDX)
 
     order = np.argsort(definition_lengths)[::-1]
     batch_x = np.array(batch_x)[order]
     batch_y = np.array(batch_y)[order]
-    batch_input = np.array(batch_input, dtype=np.float32)[order]
-    batch_input_adaptive = np.array(
-        batch_input_adaptive,
-        dtype=np.float32
-    )[order]
-    batch_word = np.array(batch_word)[order]
-    batch_context = np.array(batch_context)[order]
-    batch_ch = np.array(batch_ch)[order]
-
     ret_batch = {
         "x": batch_x,
         "y": batch_y,
-        "input": batch_input,
-        "input_adaptive": batch_input_adaptive,
-        "word": batch_word,
-        "context": batch_context,
-        "CH": batch_ch,
     }
+    if is_w2v:
+        batch_input = np.array(batch_input, dtype=np.float32)[order]
+        ret_batch["input"] = batch_input
+    if is_ada:
+        batch_input_adaptive = np.array(
+            batch_input_adaptive,
+            dtype=np.float32
+        )[order]
+        ret_batch["input_adaptive"] = batch_input_adaptive
+    if is_attn:
+        batch_word = np.array(batch_word)[order]
+        batch_context = np.array(batch_context)[order]
+        ret_batch["word"] = batch_word
+        ret_batch["context"] = batch_context
+    if is_ch:
+        batch_ch = np.array(batch_ch)[order]
+        ret_batch["CH"] = batch_ch
 
     return ret_batch

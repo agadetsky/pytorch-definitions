@@ -24,12 +24,7 @@ def train_epoch(dataloader, model, optimizer, device, clip_to, logfile):
         y_true = torch.from_numpy(batch.pop("y")).to(device).view(-1)
         # prepare model args
         to_input = {"x": torch.from_numpy(batch["x"]).to(device)}
-        if model.params["pretrain"]:
-            if model.cond_size > 0:
-                to_input["input"] = torch.from_numpy(
-                    batch["dummy_cond"]
-                ).to(device)
-        else:
+        if not model.params["pretrain"]:
             if model.is_w2v:
                 to_input["input"] = torch.from_numpy(batch["input"]).to(device)
             if model.is_ada:
@@ -70,7 +65,7 @@ def test(dataloader, model, device, logfile):
         dataloader - either LanguageModeling or DefinitionModeling dataloader
         model - DefinitionModelingModel
         device - cuda/cpu
-        logfile - where to log training
+        logfile - where to log evaluation
     """
     # switch model to evaluation mode
     model.eval()
@@ -82,12 +77,7 @@ def test(dataloader, model, device, logfile):
             y_true = torch.from_numpy(batch.pop("y")).to(device).view(-1)
             # prepare model args
             to_input = {"x": torch.from_numpy(batch["x"]).to(device)}
-            if model.params["pretrain"]:
-                if model.cond_size > 0:
-                    to_input["input"] = torch.from_numpy(
-                        batch["dummy_cond"]
-                    ).to(device)
-            else:
+            if not model.params["pretrain"]:
                 if model.is_w2v:
                     to_input["input"] = torch.from_numpy(
                         batch["input"]

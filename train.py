@@ -24,35 +24,35 @@ parser.add_argument(
 )
 # Definitions data arguments
 parser.add_argument(
-    '--train_defs', type=str, required=True,
+    '--train_defs', type=str, required=False,
     help="location of json file with train definitions."
 )
 parser.add_argument(
-    '--eval_defs', type=str, required=True,
+    '--eval_defs', type=str, required=False,
     help="location of json file with eval definitions."
 )
 parser.add_argument(
-    '--input_train', type=str, required=True,
+    '--input_train', type=str, required=False,
     help="location of train vectors for Input conditioning"
 )
 parser.add_argument(
-    '--input_eval', type=str, required=True,
+    '--input_eval', type=str, required=False,
     help="location of eval vectors for Input conditioning"
 )
 parser.add_argument(
-    '--input_adaptive_train', type=str, required=True,
+    '--input_adaptive_train', type=str, required=False,
     help="location of train vectors for InputAdaptive conditioning"
 )
 parser.add_argument(
-    '--input_adaptive_eval', type=str, required=True,
+    '--input_adaptive_eval', type=str, required=False,
     help="location of eval vectors for InputAdaptive conditioning"
 )
 parser.add_argument(
-    '--context_voc', type=str, required=True,
+    '--context_voc', type=str, required=False,
     help="location of context vocabulary file"
 )
 parser.add_argument(
-    '--ch_voc', type=str, required=True,
+    '--ch_voc', type=str, required=False,
     help="location of CH vocabulary file"
 )
 # LM data arguments
@@ -65,18 +65,10 @@ parser.add_argument(
     help="location of txt file eval LM data"
 )
 parser.add_argument(
-    "--cond_dim", type=int, required=False,
-    help="size of all conditionings for dummy input in LM pretraining"
-)
-# Model parameters arguments
-parser.add_argument(
     '--bptt', type=int, required=False,
     help="sequence length for BackPropThroughTime in LM pretraining"
 )
-parser.add_argument(
-    '--use_seed', dest="use_seed", action="store_true",
-    help="whether to use Seed conditioning or not"
-)
+# Model parameters arguments
 parser.add_argument(
     '--nx', type=int, required=True,
     help="size of embeddings"
@@ -92,6 +84,10 @@ parser.add_argument(
 parser.add_argument(
     '--rnn_dropout', type=float, required=True,
     help="probability of RNN dropout"
+)
+parser.add_argument(
+    '--use_seed', dest="use_seed", action="store_true",
+    help="whether to use Seed conditioning or not"
 )
 parser.add_argument(
     '--use_input', dest="use_input", action="store_true",
@@ -153,10 +149,6 @@ parser.add_argument(
     help="whether to use HiddenAttention conditioning or not"
 )
 parser.add_argument(
-    '--n_hidden_out', type=int, required=False,
-    help="size of output in Hidden* conditioning"
-)
-parser.add_argument(
     '--use_gated', dest="use_gated", action="store_true",
     help="whether to use Gated conditioning or not"
 )
@@ -208,86 +200,15 @@ args = vars(parser.parse_args())
 import sys
 logfile = sys.stdout
 
-if args["use_input_attention"] or args["use_hidden_attention"] or args["use_gated_attention"]:
-    assert args["n_attn_embsize"] is not None, ("--n_attn_embsize is ",
-                                                "required if ",
-                                                "Attention mode")
-    assert args["n_attn_hid"] is not None, ("--n_attn_hid is ",
-                                            "required if ",
-                                            "Attention mode")
-    assert args["attn_dropout"] is not None, ("--attn_dropout is ",
-                                              "required if ",
-                                              "Attention mode")
-    assert args["attn_sparse"] is not None, ("--attn_sparse is ",
-                                             "required if ",
-                                             "Attention mode")
-
-if args["use_ch"]:
-    assert args["ch_emb_size"] is not None, ("--ch_emb_size is required ",
-                                             "if --use_ch")
-    assert args["ch_feature_maps"] is not None, ("--ch_feature_maps is ",
-                                                 "required if --use_ch")
-    assert args["ch_kernel_sizes"] is not None, ("--ch_kernel_sizes is ",
-                                                 "required if --use_ch")
-
-if args["use_hidden"] or args["use_hidden_adaptive"] or args["use_hidden_attention"]:
-    assert args["n_hidden_out"] is not None, ("--n_hidden_out is required",
-                                              "in Hidden* conditioning")
-
-train_dataset = DefinitionModelingDataset(
-    file=args["train_defs"],
-    vocab_path=args["voc"],
-    input_vectors_path=args["input_train"],
-    input_adaptive_vectors_path=args["input_adaptive_train"],
-    context_vocab_path=args["context_voc"],
-    ch_vocab_path=args["ch_voc"],
-    use_seed=args["use_seed"]
-)
-train_dataloader = DataLoader(
-    train_dataset,
-    batch_size=args["batch_size"],
-    collate_fn=DefinitionModelingCollate
-)
-eval_dataset = DefinitionModelingDataset(
-    file=args["eval_defs"],
-    vocab_path=args["voc"],
-    input_vectors_path=args["input_eval"],
-    input_adaptive_vectors_path=args["input_adaptive_eval"],
-    context_vocab_path=args["context_voc"],
-    ch_vocab_path=args["ch_voc"],
-    use_seed=args["use_seed"]
-)
-eval_dataloader = DataLoader(
-    eval_dataset,
-    batch_size=args["batch_size"],
-    collate_fn=DefinitionModelingCollate
-)
-if args["use_input_attention"] or args["use_hidden_attention"] or args["use_gated_attention"]:
-    args["n_attn_tokens"] = len(train_dataset.context_voc.tok2id)
-
-if args["use_ch"]:
-    args["n_ch_tokens"] = len(train_dataset.ch_voc.tok2id)
-    args["ch_maxlen"] = train_dataset.ch_voc.tok_maxlen + 2
-
-if args["use_input"] or args["use_hidden"] or args["use_gated"]:
-    args["input_dim"] = train_dataset.input_vectors.shape[1]
-
-if args["use_input_adaptive"] or args["use_hidden_adaptive"] or args["use_gated_adaptive"]:
-    args["input_adaptive_dim"] = train_dataset.input_adaptive_vectors.shape[1]
-
-args["ntokens"] = len(train_dataset.voc.tok2id)
-
 if args["pretrain"]:
     assert args["train_lm"] is not None, "--train_lm is required if --pretrain"
     assert args["eval_lm"] is not None, "--eval_lm is required if --pretrain"
     assert args["bptt"] is not None, "--bptt is required if --pretrain"
-    assert args["cond_dim"] is not None, "--cond_dim is required if --pretrain"
 
     train_dataset = LanguageModelingDataset(
         file=args["train_lm"],
         vocab_path=args["voc"],
         bptt=args["bptt"],
-        cond_dim=args["cond_dim"]
     )
     train_dataloader = DataLoader(
         train_dataset, batch_size=args["batch_size"],
@@ -297,12 +218,103 @@ if args["pretrain"]:
         file=args["eval_lm"],
         vocab_path=args["voc"],
         bptt=args["bptt"],
-        cond_dim=args["cond_dim"]
     )
     eval_dataloader = DataLoader(
         eval_dataset, batch_size=args["batch_size"],
         collate_fn=LanguageModelingCollate
     )
+else:
+    assert args["train_defs"] is not None, ("--pretrain is False,"
+                                            " --train_defs is required")
+    assert args["eval_defs"] is not None, ("--pretrain is False,"
+                                           " --eval_defs is required")
+
+    train_dataset = DefinitionModelingDataset(
+        file=args["train_defs"],
+        vocab_path=args["voc"],
+        input_vectors_path=args["input_train"],
+        input_adaptive_vectors_path=args["input_adaptive_train"],
+        context_vocab_path=args["context_voc"],
+        ch_vocab_path=args["ch_voc"],
+        use_seed=args["use_seed"]
+    )
+    train_dataloader = DataLoader(
+        train_dataset,
+        batch_size=args["batch_size"],
+        collate_fn=DefinitionModelingCollate
+    )
+    eval_dataset = DefinitionModelingDataset(
+        file=args["eval_defs"],
+        vocab_path=args["voc"],
+        input_vectors_path=args["input_eval"],
+        input_adaptive_vectors_path=args["input_adaptive_eval"],
+        context_vocab_path=args["context_voc"],
+        ch_vocab_path=args["ch_voc"],
+        use_seed=args["use_seed"]
+    )
+    eval_dataloader = DataLoader(
+        eval_dataset,
+        batch_size=args["batch_size"],
+        collate_fn=DefinitionModelingCollate
+    )
+
+    if args["use_input"] or args["use_hidden"] or args["use_gated"]:
+        assert args["input_train"] is not None, ("--use_input or "
+                                                 "--use_hidden or "
+                                                 "--use_gated is used "
+                                                 "--input_train is required")
+        assert args["input_eval"] is not None, ("--use_input or "
+                                                "--use_hidden or "
+                                                "--use_gated is used "
+                                                "--input_eval is required")
+        args["input_dim"] = train_dataset.input_vectors.shape[1]
+
+    if args["use_input_adaptive"] or args["use_hidden_adaptive"] or args["use_gated_adaptive"]:
+        assert args["input_adaptive_train"] is not None, ("--use_input_adaptive or "
+                                                          "--use_hidden_adaptive or "
+                                                          "--use_gated_adaptive is used "
+                                                          "--input_adaptive_train is required")
+        assert args["input_adaptive_eval"] is not None, ("--use_input_adaptive or "
+                                                         "--use_hidden_adaptive or "
+                                                         "--use_gated_adaptive is used "
+                                                         "--input_adaptive_eval is required")
+        args["input_adaptive_dim"] = train_dataset.input_adaptive_vectors.shape[1]
+
+    if args["use_input_attention"] or args["use_hidden_attention"] or args["use_gated_attention"]:
+        assert args["context_voc"] is not None, ("--use_input_attention or "
+                                                 "--use_hidden_attention or "
+                                                 "--use_gated_attention is used "
+                                                 "--context_voc is required")
+        assert args["n_attn_embsize"] is not None, ("--use_input_attention or "
+                                                    "--use_hidden_attention or "
+                                                    "--use_gated_attention is used "
+                                                    "--n_attn_embsize is required")
+        assert args["n_attn_hid"] is not None, ("--use_input_attention or "
+                                                "--use_hidden_attention or "
+                                                "--use_gated_attention is used "
+                                                "--n_attn_hid is required")
+        assert args["attn_dropout"] is not None, ("--use_input_attention or "
+                                                  "--use_hidden_attention or "
+                                                  "--use_gated_attention is used "
+                                                  "--attn_dropout is required")
+
+        args["n_attn_tokens"] = len(train_dataset.context_voc.tok2id)
+
+    if args["use_ch"]:
+        assert args["ch_voc"] is not None, ("--ch_voc is required "
+                                            "if --use_ch")
+        assert args["ch_emb_size"] is not None, ("--ch_emb_size is required "
+                                                 "if --use_ch")
+        assert args["ch_feature_maps"] is not None, ("--ch_feature_maps is "
+                                                     "required if --use_ch")
+        assert args["ch_kernel_sizes"] is not None, ("--ch_kernel_sizes is "
+                                                     "required if --use_ch")
+
+        args["n_ch_tokens"] = len(train_dataset.ch_voc.tok2id)
+        args["ch_maxlen"] = train_dataset.ch_voc.tok_maxlen + 2
+
+
+args["ntokens"] = len(train_dataset.voc.tok2id)
 
 np.random.seed(args["random_seed"])
 torch.manual_seed(args["random_seed"])
