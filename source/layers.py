@@ -69,6 +69,19 @@ class InputAttention(nn.Module):
         )
         return F.sigmoid(logits)
 
+    def init_attn(self, freeze):
+        initrange = 0.5 / self.n_attn_embsize
+        with torch.no_grad():
+            nn.init.uniform_(self.embs.weight, -initrange, initrange)
+            nn.init.xavier_uniform_(self.a_linear.weight)
+            nn.init.constant_(self.a_linear.bias, 0)
+            nn.init.xavier_uniform_(self.ann[1].weight)
+            nn.init.constant_(self.ann[1].bias, 0)
+        self.embs.weight.requires_grad = not freeze
+
+    def init_attn_from_pretrained(self, weights, freeze):
+        pass
+
 
 class CharCNN(nn.Module):
     """
@@ -104,7 +117,7 @@ class CharCNN(nn.Module):
                 )
             )
 
-        self.emb = nn.Embedding(
+        self.embs = nn.Embedding(
             self.n_ch_tokens,
             self.ch_emb_size,
             padding_idx=constants.PAD_IDX
@@ -114,7 +127,7 @@ class CharCNN(nn.Module):
         # x - [batch_size x maxlen]
         bsize, length = x.size()
         assert length == self.ch_maxlen
-        x_embs = self.emb(x).view(bsize, 1, self.ch_maxlen, self.ch_emb_size)
+        x_embs = self.embs(x).view(bsize, 1, self.ch_maxlen, self.ch_emb_size)
 
         cnn_features = []
         for i in range(len(self.ch_feature_maps)):
@@ -123,6 +136,16 @@ class CharCNN(nn.Module):
             )
 
         return torch.cat(cnn_features, dim=1)
+
+    def init_ch(self):
+        initrange = 0.5 / self.ch_emb_size
+        with torch.no_grad():
+            nn.init.uniform_(self.embs.weight, -initrange, initrange)
+            for name, p in self.feature_mappers.named_parameters():
+                if "bias" in name:
+                    nn.init.constant_(p, 0)
+                elif "weight" in name:
+                    nn.init.xavier_uniform_(p)
 
 
 class Hidden(nn.Module):
@@ -152,6 +175,11 @@ class Hidden(nn.Module):
             [repeated_conds, hidden], dim=2
         )  # concat by last dim
         return F.tanh(self.linear(concat))
+
+    def init_hidden(self):
+        with torch.no_grad():
+            nn.init.xavier_uniform_(self.linear.weight)
+            nn.init.constant_(self.linear.bias, 0)
 
 
 class Gated(nn.Module):
@@ -194,3 +222,12 @@ class Gated(nn.Module):
         )
         hat_s_t = F.tanh(self.linear3(masked_concat))
         return (1 - z_t) * hidden + z_t * hat_s_t
+
+    def init_gated(self):
+        with torch.no_grad():
+            nn.init.xavier_uniform_(self.linear1.weight)
+            nn.init.xavier_uniform_(self.linear2.weight)
+            nn.init.xavier_uniform_(self.linear3.weight)
+            nn.init.constant_(self.linear1.bias, 0)
+            nn.init.constant_(self.linear2.bias, 0)
+            nn.init.constant_(self.linear3.bias, 0)

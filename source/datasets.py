@@ -84,7 +84,7 @@ class LanguageModelingDataset(Dataset):
             bptt (int): length of one sentence
         """
         with open(file, "r") as infile:
-            self.data = infile.read().lower().split()[:100]
+            self.data = infile.read().lower().split()
         self.voc = Vocabulary()
         self.voc.load(vocab_path)
         self.bptt = bptt
@@ -138,7 +138,7 @@ class DefinitionModelingDataset(Dataset):
             use_seed (bool): whether to use Seed conditioning or not
         """
         with open(file, "r") as infile:
-            self.data = json.load(infile)[:100]
+            self.data = json.load(infile)
         self.voc = Vocabulary()
         self.voc.load(vocab_path)
         if context_vocab_path is not None:

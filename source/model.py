@@ -106,6 +106,8 @@ class DefinitionModelingModel(nn.Module):
             out_features=self.params["ntokens"]
         )
 
+        self.init_weights()
+
     def forward(self, x, input=None, word=None, context=None, CH_word=None, hidden=None):
         """
         x - definitions/LM_sequence to read
@@ -156,3 +158,97 @@ class DefinitionModelingModel(nn.Module):
         )
 
         return decoded, hidden
+
+    def init_embeddings(self, freeze):
+        initrange = 0.5 / self.params["nx"]
+        with torch.no_grad():
+            nn.init.uniform_(self.embs.weight, -initrange, initrange)
+        self.embs.weight.requires_grad = not freeze
+
+    def init_embeddings_from_pretrained(self, weights, freeze):
+        self.embs = self.embs.from_pretrained(weights, freeze)
+
+    def init_rnn(self):
+        with torch.no_grad():
+            for name, p in self.rnn.named_parameters():
+                if "bias" in name:
+                    nn.init.constant_(p, 0)
+                elif "weight" in name:
+                    nn.init.xavier_uniform_(p)
+
+    def init_rnn_from_pretrained(self, weights):
+        # k[4:] because we need to remove prefix "rnn." because
+        # self.rnn.state_dict() is without "rnn." prefix
+        correct_state_dict = {
+            k[4:]: v for k, v in weights.items() if k[:4] == "rnn."
+        }
+        # also we need to correctly initialize weight_ih_l0
+        # with pretrained weights because it has different size with
+        # self.rnn.state_dict(), other weights has correct shapes if
+        # hidden sizes have same shape as in the LM pretraining
+        if self.input_used:
+            w = torch.empty(4 * self.params["nhid"], self.n_rnn_input)
+            nn.init.xavier_uniform_(w)
+            w[:, self.cond_size:] = correct_state_dict["weight_ih_l0"]
+            correct_state_dict["weight_ih_l0"] = w
+        self.rnn.load_state_dict(correct_state_dict)
+
+    def init_linear(self):
+        with torch.no_grad():
+            nn.init.xavier_uniform_(self.linear.weight)
+            nn.init.constant_(self.linear.bias, 0)
+
+    def init_linear_from_pretrained(self, weights):
+        # k[7: ] because we need to remove prefix "linear." because
+        # self.linear.state_dict() is without "linear." prefix
+        self.linear.load_state_dict(
+            {k[7:]: v for k, v in weights.items() if k[:7] == "linear."}
+        )
+
+    def init_weights(self):
+        if self.params["pretrain"]:
+            if self.params["w2v_weights"] is not None:
+                self.init_embeddings_from_pretrained(
+                    torch.load(self.params["w2v_weights"]),
+                    self.params["fix_embeddings"]
+                )
+            else:
+                self.init_embeddings(self.params["fix_embeddings"])
+            self.init_rnn()
+            self.init_linear()
+        else:
+            if self.params["lm_ckpt"] is not None:
+                lm_ckpt_weights = torch.load(self.params["lm_ckpt"])
+                lm_ckpt_weights = lm_ckpt_weights["state_dict"]
+                self.init_embeddings_from_pretrained(
+                    lm_ckpt_weights["embs.weight"],
+                    self.params["fix_embeddings"]
+                )
+                self.init_rnn_from_pretrained(lm_ckpt_weights)
+                self.init_linear_from_pretrained(lm_ckpt_weights)
+            else:
+                if self.params["w2v_weights"] is not None:
+                    self.init_embeddings_from_pretrained(
+                        torch.load(self.params["w2v_weights"]),
+                        self.params["fix_embeddings"]
+                    )
+                else:
+                    self.init_embeddings(self.params["fix_embeddings"])
+                self.init_rnn()
+                self.init_linear()
+            if self.is_attn:
+                if self.params["attn_ckpt"] is not None:
+                    self.input_attention.init_attn_from_pretrained(
+                        torch.load(self.params["attn_ckpt"])["state_dict"],
+                        self.params["fix_attn_embeddings"]
+                    )
+                else:
+                    self.input_attention.init_attn(
+                        self.params["fix_attn_embeddings"]
+                    )
+            if self.hidden_used:
+                self.hidden.init_hidden()
+            if self.gated_used:
+                self.gated.init_gated()
+            if self.params["use_ch"]:
+                self.ch.init_ch()

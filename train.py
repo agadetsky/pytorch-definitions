@@ -194,6 +194,27 @@ parser.add_argument(
     "--exp_dir", type=str, required=True,
     help="where to save all stuff about training"
 )
+parser.add_argument(
+    "--w2v_weights", type=str, required=False,
+    help="path to pretrained embeddings to init"
+)
+parser.add_argument(
+    "--fix_embeddings", dest="fix_embeddings", action="store_true",
+    help="whether to update embedding matrix or not"
+)
+parser.add_argument(
+    "--fix_attn_embeddings", dest="fix_attn_embeddings", action="store_true",
+    help="whether to update attention embedding matrix or not"
+)
+parser.add_argument(
+    "--lm_ckpt", type=str, required=False,
+    help="path to pretrained language model weights"
+)
+parser.add_argument(
+    "--attn_ckpt", type=str, required=False,
+    help="path to pretrained Attention module"
+)
+# read args
 args = vars(parser.parse_args())
 
 #logfile = open(args["exp_dir"] + "training_log", "a")
