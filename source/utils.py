@@ -3,14 +3,15 @@ import subprocess
 import os
 import numpy as np
 from gensim.models import KeyedVectors
-from constants import ADA_BINARY_PATH, JULIA_SCRIPT, W2V_BINARY_PATH
 import random
 
 
-def prepare_ada_vectors_from_python(file):
+def prepare_ada_vectors_from_python(file, julia_script, ada_binary_path):
     """
     file - path to file with words and contexts on each line separated by \t,
     words and punctuation marks in contexts are separated by spaces
+    julia_script - path to prep_ada.jl script
+    ada_binary_path - path to ada binary file
     """
     data = open(file, "r").readlines()
     tmp = []
@@ -25,9 +26,9 @@ def prepare_ada_vectors_from_python(file):
         json.dump(tmp, outfile, indent=4)
     with open(tmp_script_name, "w") as outfile:
         outfile.write(
-            "julia " + JULIA_SCRIPT + " --defs " + tmp_name +
+            "julia " + julia_script + " --defs " + tmp_name +
             " --save " + tmp_vecs_name +
-            " --ada " + ADA_BINARY_PATH
+            " --ada " + ada_binary_path
         )
     subprocess.call(["/bin/bash", "-i", tmp_script_name])
     vecs = np.load(tmp_vecs_name).astype(np.float32)
@@ -37,14 +38,15 @@ def prepare_ada_vectors_from_python(file):
     return vecs
 
 
-def prepare_w2v_vectors(file):
+def prepare_w2v_vectors(file, w2v_binary_path):
     """
     file - path to file with words and contexts on each line separated by \t,
     words and punctuation marks in contexts are separated by spaces
+    w2v_binary_path - path to w2v binary
     """
     data = open(file, "r").readlines()
     word_vectors = KeyedVectors.load_word2vec_format(
-        W2V_BINARY_PATH, binary=True
+        w2v_binary_path, binary=True
     )
     vecs = []
     initrange = 0.5 / word_vectors.vector_size

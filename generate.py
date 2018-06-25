@@ -36,7 +36,18 @@ parser.add_argument(
     "--wordlist", type=str, required=False,
     help="path to word list with words and contexts"
 )
-
+parser.add_argument(
+    "--w2v_binary_path", type=str, required=False,
+    help="path to binary w2v file"
+)
+parser.add_argument(
+    "--ada_binary_path", type=str, required=False,
+    help="path to binary ada file"
+)
+parser.add_argument(
+    "--prep_ada_path", type=str, required=False,
+    help="path to prep_ada.jl script"
+)
 args = parser.parse_args()
 
 with open(args.params, "r") as infile:
@@ -66,12 +77,25 @@ else:
         data = infile.readlines()
 
     if model.is_w2v:
+        assert args.w2v_binary_path is not None, ("model.is_w2v True => "
+                                                  "--w2v_binary_path is "
+                                                  "required")
         input_vecs = torch.from_numpy(
-            prepare_w2v_vectors(args.wordlist)
+            prepare_w2v_vectors(args.wordlist, args.w2v_binary_path)
         )
     if model.is_ada:
+        assert args.ada_binary_path is not None, ("model.is_ada True => "
+                                                  "--ada_binary_path is "
+                                                  "required")
+        assert args.prep_ada_path is not None, ("model.is_ada True => "
+                                                "--prep_ada_path is "
+                                                "required")
         input_vecs = torch.from_numpy(
-            prepare_ada_vectors_from_python(args.wordlist)
+            prepare_ada_vectors_from_python(
+                args.wordlist,
+                args.prep_ada_path,
+                args.ada_binary_path
+            )
         )
     if model.is_attn:
         context_voc = Vocabulary()
