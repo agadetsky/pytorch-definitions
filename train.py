@@ -217,9 +217,9 @@ parser.add_argument(
 # read args
 args = vars(parser.parse_args())
 
-#logfile = open(args["exp_dir"] + "training_log", "a")
-import sys
-logfile = sys.stdout
+logfile = open(args["exp_dir"] + "training_log", "a")
+#import sys
+#logfile = sys.stdout
 
 if args["pretrain"]:
     assert args["train_lm"] is not None, "--train_lm is required if --pretrain"
