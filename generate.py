@@ -2,7 +2,7 @@ from source.model import DefinitionModelingModel
 from source.pipeline import generate
 from source.datasets import Vocabulary
 from source.utils import prepare_ada_vectors_from_python, prepare_w2v_vectors
-from constants import BOS
+from source.constants import BOS
 import argparse
 import torch
 import json
@@ -119,4 +119,6 @@ else:
             to_input["prefix"] = word
         else:
             to_input["prefix"] = BOS
+        print("Word: {0}".format(word))
+        print("Context: {0}".format(context))
         print(generate(**to_input))

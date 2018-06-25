@@ -32,6 +32,10 @@ parser.add_argument(
     help="location of json file with eval definitions."
 )
 parser.add_argument(
+    '--test_defs', type=str, required=False,
+    help="location of json file with test definitions"
+)
+parser.add_argument(
     '--input_train', type=str, required=False,
     help="location of train vectors for Input conditioning"
 )
@@ -40,12 +44,20 @@ parser.add_argument(
     help="location of eval vectors for Input conditioning"
 )
 parser.add_argument(
+    '--input_test', type=str, required=False,
+    help="location of test vectors for Input conditioning"
+)
+parser.add_argument(
     '--input_adaptive_train', type=str, required=False,
     help="location of train vectors for InputAdaptive conditioning"
 )
 parser.add_argument(
     '--input_adaptive_eval', type=str, required=False,
     help="location of eval vectors for InputAdaptive conditioning"
+)
+parser.add_argument(
+    '--input_adaptive_test', type=str, required=False,
+    help="location test vectors for InputAdaptive conditioning"
 )
 parser.add_argument(
     '--context_voc', type=str, required=False,
@@ -63,6 +75,10 @@ parser.add_argument(
 parser.add_argument(
     '--eval_lm', type=str, required=False,
     help="location of txt file eval LM data"
+)
+parser.add_argument(
+    '--test_lm', type=str, required=False,
+    help="location of txt file test LM data"
 )
 parser.add_argument(
     '--bptt', type=int, required=False,
@@ -224,6 +240,7 @@ logfile = open(args["exp_dir"] + "training_log", "a")
 if args["pretrain"]:
     assert args["train_lm"] is not None, "--train_lm is required if --pretrain"
     assert args["eval_lm"] is not None, "--eval_lm is required if --pretrain"
+    assert args["test_lm"] is not None, "--test_lm is required if --pretrain"
     assert args["bptt"] is not None, "--bptt is required if --pretrain"
 
     train_dataset = LanguageModelingDataset(
@@ -249,6 +266,8 @@ else:
                                             " --train_defs is required")
     assert args["eval_defs"] is not None, ("--pretrain is False,"
                                            " --eval_defs is required")
+    assert args["test_defs"] is not None, ("--pretrain is False,"
+                                           " --test_defs is required")
 
     train_dataset = DefinitionModelingDataset(
         file=args["train_defs"],
@@ -288,6 +307,10 @@ else:
                                                 "--use_hidden or "
                                                 "--use_gated is used "
                                                 "--input_eval is required")
+        assert args["input_test"] is not None, ("--use_input or "
+                                                "--use_hidden or "
+                                                "--use_gated is used "
+                                                "--input_test is required")
         args["input_dim"] = train_dataset.input_vectors.shape[1]
 
     if args["use_input_adaptive"] or args["use_hidden_adaptive"] or args["use_gated_adaptive"]:
@@ -299,6 +322,10 @@ else:
                                                          "--use_hidden_adaptive or "
                                                          "--use_gated_adaptive is used "
                                                          "--input_adaptive_eval is required")
+        assert args["input_adaptive_test"] is not None, ("--use_input_adaptive or "
+                                                         "--use_hidden_adaptive or "
+                                                         "--use_gated_adaptive is used "
+                                                         "--input_adaptive_test is required")
         args["input_adaptive_dim"] = train_dataset.input_adaptive_vectors.shape[1]
 
     if args["use_input_attention"] or args["use_hidden_attention"] or args["use_gated_attention"]:

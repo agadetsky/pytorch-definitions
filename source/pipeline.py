@@ -199,7 +199,7 @@ def generate(model, voc, tau, n, length, device, prefix=None,
             for i in range(n):
                 ret[i].append(to_input["x"][i][0].item())
 
-    output = [prefix.split() for i in range(n)]
+    output = [[] for i in range(n)]
     for i in range(n):
         decoded = voc.decode_seq(ret[i])
         for j in range(length):

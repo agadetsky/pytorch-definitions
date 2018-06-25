@@ -126,7 +126,7 @@ class DefinitionModelingDataset(Dataset):
 
     def __init__(self, file, vocab_path, input_vectors_path=None,
                  input_adaptive_vectors_path=None, context_vocab_path=None,
-                 ch_vocab_path=None, use_seed=False):
+                 ch_vocab_path=None, use_seed=False, wordlist_path=None):
         """
         Args:
             file (string): path to the file
@@ -136,6 +136,7 @@ class DefinitionModelingDataset(Dataset):
             context_vocab_path (string): path to vocab for context words for Input-Attention
             ch_vocab_path (string): path to char vocab for CH conditioning
             use_seed (bool): whether to use Seed conditioning or not
+            wordlist_path (string): path to wordlist with words
         """
         with open(file, "r") as infile:
             self.data = json.load(infile)
@@ -148,9 +149,39 @@ class DefinitionModelingDataset(Dataset):
             self.ch_voc = Vocabulary()
             self.ch_voc.load(ch_vocab_path)
         if input_vectors_path is not None:
-            self.input_vectors = np.load(input_vectors_path)
+            self.input_vectors = np.load(input_vectors_path).astype(np.float32)
         if input_adaptive_vectors_path is not None:
-            self.input_adaptive_vectors = np.load(input_adaptive_vectors_path)
+            self.input_adaptive_vectors = np.load(
+                input_adaptive_vectors_path
+            ).astype(np.float32)
+        if wordlist_path is not None:
+            wordlist = set(
+                [elem.strip() for elem in open(wordlist_path, "r").readlines()]
+            )
+            data = []
+            if input_vectors_path is not None:
+                input_vectors = []
+            if input_adaptive_vectors_path is not None:
+                input_adaptive_vectors = []
+            for i in range(len(self.data)):
+                if self.data[i][0][0] in wordlist:
+                    data.append(self.data[i])
+                    if input_vectors_path is not None:
+                        input_vectors.append(
+                            self.input_vectors[i]
+                        )
+                    if input_adaptive_vectors_path is not None:
+                        input_adaptive_vectors.append(
+                            self.input_adaptive_vectors[i]
+                        )
+            assert len(data) > 0, "You provided bad wordlist, no words found"
+            if input_vectors_path is not None:
+                self.input_vectors = np.array(input_vectors).astype(np.float32)
+            if input_adaptive_vectors_path is not None:
+                self.input_adaptive_vectors = np.array(
+                    input_adaptive_vectors
+                ).astype(np.float32)
+            self.data = data
         self.use_seed = use_seed
 
     def __len__(self):
