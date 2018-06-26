@@ -80,7 +80,8 @@ class InputAttention(nn.Module):
         self.embs.weight.requires_grad = not freeze
 
     def init_attn_from_pretrained(self, weights, freeze):
-        pass
+        self.load_state_dict(weights)
+        self.embs.weight.requires_grad = not freeze
 
 
 class CharCNN(nn.Module):
