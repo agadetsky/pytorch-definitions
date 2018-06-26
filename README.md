@@ -31,21 +31,29 @@ Gensim 3.4
 ```
 
 To install AdaGram software to use Adaptive conditioning:
+
+Download Julia 0.6 binaries from [official site](https://julialang.org/downloads/) and add alias in ~/.bashrc
 ```
-install Julia 0.6 from binaries https://julialang.org/downloads/
-then add in ~/.bashrc
 alias julia='JULIA_BINARY_PATH/bin/julia'
-then in julia interpreter install following packages:
+```
+Use `source ~/.bashrc` to reload ~/.bashrc
+
+Then activate julia interpreter using `julia` and install following packages:
+```
 Pkg.clone("https://github.com/mirestrepo/AdaGram.jl")
 Pkg.build("AdaGram")
 Pkg.add("ArgParse")
 Pkg.add("JSON")
 Pkg.add("NPZ")
 exit()
+```
 Then add in ~/.bashrc
+```
 export PATH="JULIA_BINARY_PATH/bin:$PATH"
 export LD_LIBRARY_PATH="JULIA_INSTALL_PATH/v0.6/AdaGram/lib:$LD_LIBRARY_PATH"
-and finally
+```
+And finally to apply exports
+```
 source ~/.bashrc
 ```
 To install Mosesdecoder (for BLEU) follow instructions on the [official site](http://www.statmt.org/moses/?n=Development.GetStarted)
