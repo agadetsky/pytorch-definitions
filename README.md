@@ -344,6 +344,43 @@ optional arguments:
                         path to mosesdecoder sentence-bleu binary
   --mode MODE           whether to average or take random example per word
 ```
+
+Also you can pretrain Attention module using `python train_attention_skipgram.py` and<br/>
+then use path to saved weights as `--attn_ckpt` argument in `train.py`
+```
+usage: train_attention_skipgram.py [-h] [--data DATA] --context_voc
+                                   CONTEXT_VOC [--prepared] --window WINDOW
+                                   --random_seed RANDOM_SEED [--sparse]
+                                   --vec_dim VEC_DIM --attn_hid ATTN_HID
+                                   --attn_dropout ATTN_DROPOUT --lr LR
+                                   --batch_size BATCH_SIZE --num_epochs
+                                   NUM_EPOCHS --exp_dir EXP_DIR
+
+Script to train a AttentionSkipGram model
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --data DATA           path to data
+  --context_voc CONTEXT_VOC
+                        path to context voc for DefinitionModelingModel is
+                        necessary to save pretrained attention module,
+                        particulary embedding matrix
+  --prepared            whether to prepare data or use already prepared
+  --window WINDOW       window for AttentionSkipGram model
+  --random_seed RANDOM_SEED
+                        random seed for training
+  --sparse              whether to use sparse embeddings or not
+  --vec_dim VEC_DIM     vector dim to train
+  --attn_hid ATTN_HID   hidden size in attention module
+  --attn_dropout ATTN_DROPOUT
+                        dropout prob in attention module
+  --lr LR               initial lr to use
+  --batch_size BATCH_SIZE
+                        batch size to use
+  --num_epochs NUM_EPOCHS
+                        number of epochs to train
+  --exp_dir EXP_DIR     where to save weights, prepared data and logs
+```
 # Citation
 
 ```
