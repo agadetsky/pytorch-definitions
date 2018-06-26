@@ -142,6 +142,6 @@ devnull.close()
 # delete tmp files
 for f in to_be_deleted:
     os.remove(f)
-print(score / count)
-print(total_hyps)
-print(total_refs)
+print("BLEU: ", score / count)
+print("NUM HYPS USED: ", total_hyps)
+print("NUM REFS USED: ", total_refs)
