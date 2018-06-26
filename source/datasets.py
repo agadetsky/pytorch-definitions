@@ -1,5 +1,5 @@
-from torch.utils.data import Dataset
 from . import constants
+from torch.utils.data import Dataset
 import json
 import numpy as np
 import math

@@ -1,8 +1,8 @@
+from source.datasets import Vocabulary
 import argparse
 from gensim.models import KeyedVectors
 import torch
 import numpy as np
-from source.datasets import Vocabulary
 
 parser = argparse.ArgumentParser(
     description='Prepare word vectors for embedding layer in the model'

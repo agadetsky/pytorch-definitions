@@ -1,10 +1,10 @@
+from . import constants
+from .datasets import pad
 from torch.nn.utils import clip_grad_norm_
 import torch.nn.functional as F
 from tqdm import tqdm
 import torch
 import numpy as np
-from . import constants
-from source.datasets import pad
 
 
 def train_epoch(dataloader, model, optimizer, device, clip_to, logfile):
