@@ -5,7 +5,7 @@ This repo contains code for our paper [Conditional Generators of Words Definitio
 __Abstract__
 
 We explore recently introduced definition modeling technique that provided the tool for evaluation of different distributed
-vector representations of words through modeling dictionary definitions of words. In this work, we study the problem of word ambiguities in definition modeling and propose a possible solution by employing latent variable modeling and soft attention mechanisms. Our quantitative and qualitative evaluation and analysis of the model shows that taking into account words ambi-guity and polysemy leads to performance improvement.
+vector representations of words through modeling dictionary definitions of words. In this work, we study the problem of word ambiguities in definition modeling and propose a possible solution by employing latent variable modeling and soft attention mechanisms. Our quantitative and qualitative evaluation and analysis of the model shows that taking into account words ambiguity and polysemy leads to performance improvement.
 
 # Citation
 
