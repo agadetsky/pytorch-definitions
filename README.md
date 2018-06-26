@@ -277,6 +277,8 @@ python train.py --voc VOC_PATH --nx 300 --nhid 300 --rnn_dropout 0.5 --lr 0.001 
 --use_input --input_train PREPARED_W2V_TRAIN_VECS --input_eval PREPARED_W2V_EVAL_VECS --input_test PREPARED_W2V_TEST_VECS
 ```
 
+To train `Seed + Input` model with pretraining as unconditional LM provide path to pretrained LM weights<br/>as `--lm_ckpt` argument in `train.py`
+
 To generate using model use `python generate.py`
 ```
 usage: generate.py [-h] --params PARAMS --ckpt CKPT --tau TAU --n N --length
