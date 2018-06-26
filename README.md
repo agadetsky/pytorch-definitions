@@ -126,8 +126,8 @@ optional arguments:
   --ada ADA             location of AdaGram file
   -h, --help            show this help message and exit
 ```
-If you want to init embedding matrix of the model with Google word vectors then<br/>
-prepare it using `python prep_embedding_matrix.py`
+If you want to init embedding matrix of the model with Google word vectors then prepare it using
+`python prep_embedding_matrix.py` and then use path to saved weights as `----w2v_weights` in `train.py`
 ```
 usage: prep_embedding_matrix.py [-h] --voc VOC --w2v W2V --save SAVE
 
