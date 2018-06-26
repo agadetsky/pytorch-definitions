@@ -1,10 +1,9 @@
 from torch.nn.utils import clip_grad_norm_
 import torch.nn.functional as F
 from tqdm import tqdm
-from constants import PAD_IDX
 import torch
 import numpy as np
-import constants
+from . import constants
 from source.datasets import pad
 
 
@@ -44,7 +43,10 @@ def train_epoch(dataloader, model, optimizer, device, clip_to, logfile):
                 ).to(device)
 
         y_pred, hidden = model(**to_input)
-        batch_loss = F.cross_entropy(y_pred, y_true, ignore_index=PAD_IDX)
+        batch_loss = F.cross_entropy(
+            y_pred, y_true,
+            ignore_index=constants.PAD_IDX
+        )
         optimizer.zero_grad()
         batch_loss.backward()
         clip_grad_norm_(
@@ -104,10 +106,10 @@ def test(dataloader, model, device, logfile):
             loss_sum += F.cross_entropy(
                 y_pred,
                 y_true,
-                ignore_index=PAD_IDX,
+                ignore_index=constants.PAD_IDX,
                 size_average=False
             ).item()
-            lengths_sum += (to_input["x"] != PAD_IDX).sum().item()
+            lengths_sum += (to_input["x"] != constants.PAD_IDX).sum().item()
             logfile.flush()
 
     perplexity = np.exp(loss_sum / lengths_sum)
@@ -171,7 +173,8 @@ def generate(model, voc, tau, n, length, device, prefix=None,
                 pad(
                     [constants.BOS_IDX] +
                     ch_voc.encode_seq(list(CH_word)) +
-                    [constants.EOS_IDX], ch_voc.tok_maxlen + 2, PAD_IDX
+                    [constants.EOS_IDX], ch_voc.tok_maxlen + 2,
+                    constants.PAD_IDX
                 )
             ).repeat(n).view(n, -1).to(device)
 

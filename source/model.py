@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_packed_sequence as unpack
 from torch.nn.utils.rnn import pack_padded_sequence as pack
-import constants
+from . import constants
 from layers import Input, InputAttention, CharCNN, Hidden, Gated
 
 

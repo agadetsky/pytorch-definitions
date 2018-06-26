@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import constants
+from . import constants
 
 
 class Input(nn.Module):
