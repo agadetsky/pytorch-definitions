@@ -7,6 +7,17 @@ __Abstract__
 We explore recently introduced definition modeling technique that provided the tool for evaluation of different distributed
 vector representations of words through modeling dictionary definitions of words. In this work, we study the problem of word ambiguities in definition modeling and propose a possible solution by employing latent variable modeling and soft attention mechanisms. Our quantitative and qualitative evaluation and analysis of the model shows that taking into account words ambi-guity and polysemy leads to performance improvement.
 
+# Citation
+
+```
+@article {definitions2018,
+  title  = {Conditional Generators of Words Definitions},
+  author = {Gadetsky, Artyom and Yakubovskiy, Ilya and Vetrov, Dmitry},
+  booktitle = {Proceedings of the 56th Annual Meeting of Association for Computational Linguistics},
+  year = {2018}
+}
+```
+
 # Environment requirements and Data Preparation
 
 Install conda environment with the following packages:
@@ -382,14 +393,4 @@ optional arguments:
   --num_epochs NUM_EPOCHS
                         number of epochs to train
   --exp_dir EXP_DIR     where to save weights, prepared data and logs
-```
-# Citation
-
-```
-@article {definitions2018,
-  title  = {Conditional Generators of Words Definitions},
-  author = {Gadetsky, Artyom and Yakubovskiy, Ilya and Vetrov, Dmitry},
-  booktitle = {Proceedings of the 56th Annual Meeting of Association for Computational Linguistics},
-  year = {2018}
-}
 ```
