@@ -49,9 +49,9 @@ unzip wikitext-103-v1.zip
 ```
 To get data for Google word vectors use [official site](https://code.google.com/archive/p/word2vec/). You need .bin.gz file.<br/> Don't forget to `gunzip` downloaded file to extract binaries
 
-Adaptive Skip-gram vectors are available upon request or you can train your owns using instructions in the [official repo](https://github.com/sbos/AdaGram.jl)
+Adaptive Skip-gram vectors are available upon request. Also you can train your owns using instructions in the [official repo](https://github.com/sbos/AdaGram.jl)
 
-The Definition Modeling data is available upon request or you can collect your own. If you want to collect your own, then you should prepare 3 datasplits: train, test and val. Each datasplit is json file with the following format:
+The Definition Modeling data is available upon request because of Oxford Dictionaries distribution license. Also you can collect your own. If you want to collect your own, then you should prepare 3 datasplits: train, test and val. Each datasplit is json file with the following format:
 
 ```
 data = [
