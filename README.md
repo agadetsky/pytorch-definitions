@@ -20,7 +20,7 @@ vector representations of words through modeling dictionary definitions of words
 
 # Environment requirements and Data Preparation
 
-Install conda environment with the following packages:
+* Install conda environment with the following packages:
 
 ```
 Python 3.6
@@ -30,7 +30,7 @@ Tqdm 4.23
 Gensim 3.4
 ```
 
-To install AdaGram software to use Adaptive conditioning:
+* To install AdaGram software to use Adaptive conditioning:
 
 Download Julia 0.6 binaries from [official site](https://julialang.org/downloads/) and add alias in ~/.bashrc
 ```
@@ -56,9 +56,9 @@ And finally to apply exports
 ```
 source ~/.bashrc
 ```
-To install Mosesdecoder (for BLEU) follow instructions on the [official site](http://www.statmt.org/moses/?n=Development.GetStarted)
+* To install Mosesdecoder (for BLEU) follow instructions on the [official site](http://www.statmt.org/moses/?n=Development.GetStarted)
 
-To get data for language model (LM) pretraining:
+* To get data for language model (LM) pretraining:
 ```
 cd pytorch-definitions
 mkdir data
@@ -66,11 +66,11 @@ cd data
 wget https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-103-v1.zip
 unzip wikitext-103-v1.zip
 ```
-To get data for Google word vectors use [official site](https://code.google.com/archive/p/word2vec/). You need .bin.gz file.<br/> Don't forget to `gunzip` downloaded file to extract binaries
+* To get data for Google word vectors use [official site](https://code.google.com/archive/p/word2vec/). You need .bin.gz file. Don't forget to `gunzip` downloaded file to extract binaries
 
-Adaptive Skip-gram vectors are available upon request. Also you can train your owns using instructions in the [official repo](https://github.com/sbos/AdaGram.jl)
+* Adaptive Skip-gram vectors are available upon request. Also you can train your owns using instructions in the [official repo](https://github.com/sbos/AdaGram.jl)
 
-The Definition Modeling data is available upon request because of Oxford Dictionaries distribution license. Also you can collect your own. If you want to collect your own, then you should prepare 3 datasplits: train, test and val. Each datasplit is json file with the following format:
+* The Definition Modeling data is available upon request because of Oxford Dictionaries distribution license. Also you can collect your own. If you want to collect your own, then you should prepare 3 datasplits: train, test and val. Each datasplit is json file with the following format:
 
 ```
 data = [
@@ -90,7 +90,7 @@ data[i][2] - context to understand word meaning (list of strings)
 # Usage
 Firstly, you need to prepare vocabs, vectors and etc for using model:
 
-To prepare vocabs use `python prep_vocab.py`
+* To prepare vocabs use `python prep_vocab.py`
 
 ```
 usage: prep_vocab.py [-h] --defs DEFS [DEFS ...] [--lm LM [LM ...]] [--same]
@@ -114,7 +114,7 @@ optional arguments:
                         words)
 ```
 
-To prepare w2v vectors use `python prep_w2v.py`
+* To prepare w2v vectors use `python prep_w2v.py`
 ```
 usage: prep_w2v.py [-h] --defs DEFS [DEFS ...] --save SAVE [SAVE ...] --w2v
                    W2V
@@ -130,7 +130,7 @@ optional arguments:
   --w2v W2V             location of binary w2v file
 ```
 
-To prepare Adagram vectors use `julia prep_ada.jl`
+* To prepare Adagram vectors use `julia prep_ada.jl`
 ```
 usage: prep_ada.jl --defs DEFS [DEFS...] --save SAVE [SAVE...]
                    --ada ADA [-h]
@@ -145,8 +145,8 @@ optional arguments:
   --ada ADA             location of AdaGram file
   -h, --help            show this help message and exit
 ```
-If you want to init embedding matrix of the model with Google word vectors then prepare it using
-`python prep_embedding_matrix.py` and then use path to saved weights as `----w2v_weights` in `train.py`
+* If you want to init embedding matrix of the model with Google word vectors then prepare it using<br/>
+`python prep_embedding_matrix.py` and then use path to saved weights as `--w2v_weights` in `train.py`
 ```
 usage: prep_embedding_matrix.py [-h] --voc VOC --w2v W2V --save SAVE
 
@@ -161,7 +161,7 @@ optional arguments:
 
 Now all is already ready for model usage!
 
-To train model use `python train.py`
+* To train model use `python train.py`
 ```
 usage: train.py [-h] [--pretrain] --voc VOC [--train_defs TRAIN_DEFS]
                 [--eval_defs EVAL_DEFS] [--test_defs TEST_DEFS]
@@ -298,7 +298,7 @@ python train.py --voc VOC_PATH --nx 300 --nhid 300 --rnn_dropout 0.5 --lr 0.001 
 
 To train `Seed + Input` model with pretraining as unconditional LM provide path to pretrained LM weights<br/>as `--lm_ckpt` argument in `train.py`
 
-To generate using model use `python generate.py`
+* To generate using model use `python generate.py`
 ```
 usage: generate.py [-h] --params PARAMS --ckpt CKPT --tau TAU --n N --length
                    LENGTH [--prefix PREFIX] [--wordlist WORDLIST]
@@ -325,7 +325,7 @@ optional arguments:
                         path to prep_ada.jl script
 ```
 
-To evaluate model use `python eval.py`
+* To evaluate model use `python eval.py`
 ```
 usage: eval.py [-h] --params PARAMS --ckpt CKPT --datasplit DATASPLIT --type
                TYPE [--wordlist WORDLIST] [--tau TAU] [--n N]
@@ -347,7 +347,7 @@ optional arguments:
   --length LENGTH       maximum length of generated samples
 ```
 
-To measure BLEU for trained model, firstly evaluate it using `--bleu` argument in `eval.py`<br/>
+* To measure BLEU for trained model, firstly evaluate it using `--bleu` argument in `eval.py`<br/>
 and then compute bleu using `python bleu.py`
 ```
 usage: bleu.py [-h] --ref REF --hyp HYP --n N [--with_contexts] --bleu_path
@@ -366,7 +366,7 @@ optional arguments:
   --mode MODE           whether to average or take random example per word
 ```
 
-Also you can pretrain Attention module using `python train_attention_skipgram.py` and<br/>
+* Also you can pretrain Attention module using `python train_attention_skipgram.py` and<br/>
 then use path to saved weights as `--attn_ckpt` argument in `train.py`
 ```
 usage: train_attention_skipgram.py [-h] [--data DATA] --context_voc
