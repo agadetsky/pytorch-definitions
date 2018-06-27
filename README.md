@@ -1,6 +1,6 @@
 # Conditional Generators of Words Definitions
 
-This repo contains code for our paper [Conditional Generators of Words Definitions]().
+This repo contains code for our paper [Conditional Generators of Words Definitions](https://arxiv.org/abs/1806.10090).
 
 __Abstract__
 
