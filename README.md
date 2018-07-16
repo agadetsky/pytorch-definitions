@@ -10,11 +10,15 @@ vector representations of words through modeling dictionary definitions of words
 # Citation
 
 ```
-@article {definitions2018,
-  title  = {Conditional Generators of Words Definitions},
-  author = {Gadetsky, Artyom and Yakubovskiy, Ilya and Vetrov, Dmitry},
-  booktitle = {Proceedings of the 56th Annual Meeting of Association for Computational Linguistics},
-  year = {2018}
+@InProceedings{P18-2043,
+  author = "Gadetsky, Artyom and Yakubovskiy, Ilya and Vetrov, Dmitry",
+  title = "Conditional Generators of Words Definitions",
+  booktitle = "Proceedings of the 56th Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers)",
+  year = "2018",
+  publisher = "Association for Computational Linguistics",
+  pages = "266--271",
+  location = "Melbourne, Australia",
+  url = "http://aclweb.org/anthology/P18-2043"
 }
 ```
 
